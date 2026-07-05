@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Ubuntu+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-ubuntu: "Ubuntu", "Segoe UI", system-ui, sans-serif;
+  --font-mono:   "Ubuntu Mono", "Courier New", monospace;
+  --color-ubuntu-orange:    #E95420;
+  --color-ubuntu-purple:    #772953;
+  --color-ubuntu-aubergine: #2C001E;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: "Ubuntu", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(233,84,32,0.45); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(233,84,32,0.75); }
+
+/* Glass morphism */
+.glass {
+  background: rgba(20,20,30,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Keyframe animations */
+@keyframes bootPulse {
+  0%,100% { opacity:.55; }
+  50%      { opacity:1; filter:drop-shadow(0 0 14px #E95420); }
+}
+@keyframes loadingDot {
+  0%,80%,100% { transform:scale(.25); opacity:.25; }
+  40%          { transform:scale(1);  opacity:1;   }
+}
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(18px); }
+  to   { opacity:1; transform:translateY(0);    }
+}
+@keyframes slideDown {
+  from { opacity:0; transform:translateY(-8px); }
+  to   { opacity:1; transform:translateY(0);    }
+}
+@keyframes glowPulse {
+  0%,100% { box-shadow:0 0 6px rgba(233,84,32,.3); }
+  50%      { box-shadow:0 0 22px rgba(233,84,32,.7),0 0 44px rgba(233,84,32,.25); }
+}
+@keyframes spinLoop { to { transform:rotate(360deg); } }
+@keyframes bounceY {
+  0%,100% { transform:translateY(0);   }
+  50%      { transform:translateY(-6px); }
+}
+
+.animate-fade-in-up { animation: fadeInUp  .45s ease forwards; }
+.animate-slide-down { animation: slideDown .2s  ease forwards; }
+.animate-glow-pulse { animation: glowPulse 2s   ease-in-out infinite; }
+.animate-spin       { animation: spinLoop  .8s  linear infinite; }
+.animate-pulse      { animation: glowPulse 1.5s ease-in-out infinite; }
+.animate-bounce     { animation: bounceY   1.2s ease-in-out infinite; }

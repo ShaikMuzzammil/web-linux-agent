@@ -1,10 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
-const LOG_LINES = [
+const LOG_LINES: string[] = [
   "[    0.000000] Linux version 5.15.0-91-generic (buildd@lcy02-amd64-017)",
-  "[    0.000001] Command line: BOOT_IMAGE=/vmlinuz-5.15.0-91-generic root=/dev/sda1 ro quiet splash",
-  "[    0.000100] ACPI: RSDP 0x000F05B0 000024 (v02 BOCHS )",
+  "[    0.000100] ACPI: RSDP 0x00F0580 000024 (v02 BOCHS )",
   "[    0.000210] PCI: Using configuration type 1 for base access",
   "[    0.001234] clocksource: tsc-early: mask: 0xffffffffffffffff",
   "[    0.003456] NET: Registered PF_INET6 protocol family",
@@ -20,21 +19,29 @@ const LOG_LINES = [
   "[  OK  ] Reached target Network.",
   "[  OK  ] Started GNOME Display Manager.",
   "[  OK  ] Reached target Graphical Interface.",
+  "[  OK  ] Started Session 1 of User muzzammil.",
 ];
 
-type Phase = "logs" | "logo" | "splash";
+type Phase = "boot" | "logo" | "splash";
 
 export default function BootScreen() {
-  const [phase, setPhase] = useState<Phase>("logs");
+  const [phase, setPhase]           = useState<Phase>("boot");
   const [visibleLogs, setVisibleLogs] = useState<string[]>([]);
+  const [dots, setDots]             = useState(0);
 
-  // Show log lines
+  // Scroll log stream — guard against out-of-bounds undefined
   useEffect(() => {
     let i = 0;
     const id = setInterval(() => {
-      setVisibleLogs((p) => [...p, LOG_LINES[i]]);
-      i++;
-      if (i >= LOG_LINES.length) clearInterval(id);
+      if (i < LOG_LINES.length) {
+        const line = LOG_LINES[i];
+        if (line !== undefined) {
+          setVisibleLogs((p) => [...p, line]);
+        }
+        i++;
+      } else {
+        clearInterval(id);
+      }
     }, 70);
     return () => clearInterval(id);
   }, []);
@@ -46,91 +53,92 @@ export default function BootScreen() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  return (
-    <div
-      className="fixed inset-0 bg-black flex flex-col overflow-hidden"
-      style={{ fontFamily: "'Ubuntu Mono', 'Courier New', monospace" }}
-    >
-      {/* Log phase */}
-      {phase === "logs" && (
-        <div className="flex-1 p-4 overflow-hidden text-xs leading-5">
-          {visibleLogs.map((line, i) => (
-            <div key={i}>
-              {line.startsWith("[  OK  ]") ? (
-                <>
-                  <span className="text-green-400">[  OK  ]</span>
-                  <span className="text-gray-300">{line.slice(8)}</span>
-                </>
-              ) : (
-                <span className="text-green-600 opacity-80">{line}</span>
-              )}
+  // Loading dots
+  useEffect(() => {
+    if (phase !== "splash") return;
+    const id = setInterval(() => setDots((d) => (d + 1) % 4), 350);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  /* ── Phase: boot log ── */
+  if (phase === "boot") {
+    return (
+      <div className="fixed inset-0 bg-black overflow-hidden font-mono text-xs leading-relaxed p-4"
+        style={{ color: "#aaffa4" }}>
+        {visibleLogs.map((line, i) => {
+          // Null-safe startsWith — prevents "can't access property startsWith" crash
+          const isOk = typeof line === "string" && line.startsWith("[  OK  ]");
+          return (
+            <div key={i} style={{ color: isOk ? "#00ff88" : "#aaffa4" }}>
+              {isOk
+                ? <><span style={{ color: "#00ff88" }}>[  OK  ]</span>{line.slice(8)}</>
+                : line}
             </div>
-          ))}
-          <span className="text-green-400 animate-pulse">_</span>
-        </div>
-      )}
+          );
+        })}
+        <div className="mt-1 opacity-75">_</div>
+      </div>
+    );
+  }
 
-      {/* Logo phase */}
-      {phase === "logo" && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-10">
-          <svg
-            viewBox="0 0 100 100"
-            className="w-28 h-28"
-            style={{ animation: "bootPulse 1.4s ease-in-out infinite" }}
-          >
-            <circle cx="50" cy="50" r="47" fill="none" stroke="#E95420" strokeWidth="3" opacity="0.4" />
-            <circle cx="50" cy="12" r="10" fill="#E95420" />
-            <circle cx="14" cy="72" r="10" fill="#E95420" />
-            <circle cx="86" cy="72" r="10" fill="#E95420" />
-            <path d="M50 22 A28 28 0 0 1 74 62" stroke="#E95420" strokeWidth="5" fill="none" strokeLinecap="round" />
-            <path d="M74 62 A28 28 0 0 1 26 62" stroke="#E95420" strokeWidth="5" fill="none" strokeLinecap="round" />
-            <path d="M26 62 A28 28 0 0 1 50 22" stroke="#E95420" strokeWidth="5" fill="none" strokeLinecap="round" />
-          </svg>
-          <LoadingDots />
-        </div>
-      )}
+  /* ── Phase: Ubuntu logo ── */
+  if (phase === "logo") {
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-8">
+        {/* Ubuntu circle-of-friends SVG logo */}
+        <svg width="90" height="90" viewBox="0 0 90 90"
+          style={{ animation: "bootPulse 1.5s ease-in-out infinite" }}>
+          <circle cx="45" cy="45" r="42" fill="none" stroke="#E95420" strokeWidth="3" />
+          {[0, 120, 240].map((deg) => {
+            const rad = (deg - 90) * (Math.PI / 180);
+            const cx  = 45 + 28 * Math.cos(rad);
+            const cy  = 45 + 28 * Math.sin(rad);
+            return <circle key={deg} cx={cx} cy={cy} r="9" fill="#E95420" />;
+          })}
+          <circle cx="45" cy="45" r="14" fill="#E95420" />
+        </svg>
+        <p className="text-white/40 text-sm tracking-widest uppercase">Ubuntu 22.04 LTS</p>
+      </div>
+    );
+  }
 
-      {/* Splash phase */}
-      {phase === "splash" && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-8">
-          <div className="text-center">
-            <div
-              className="text-6xl font-light tracking-[0.3em] text-white mb-2"
-              style={{ fontFamily: "Ubuntu, sans-serif" }}
-            >
-              ubuntu
-            </div>
-            <div className="text-white/40 text-sm tracking-widest">22.04.3 LTS</div>
-          </div>
-          <LoadingDots />
-          <div className="absolute bottom-6 text-white/25 text-xs tracking-widest">
-            SHAIK MUZZAMMIL — WEB LINUX AGENT
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LoadingDots() {
+  /* ── Phase: splash / loading dots ── */
   return (
-    <div className="flex gap-2.5">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className="w-3 h-3 rounded-full"
-          style={{
-            background: "#E95420",
-            animation: `loadingDot 1.2s ease-in-out ${i * 0.16}s infinite`,
-          }}
-        />
-      ))}
-      <style>{`
-        @keyframes loadingDot {
-          0%,80%,100% { transform:scale(0.25); opacity:0.25; }
-          40%          { transform:scale(1);    opacity:1;    }
-        }
-      `}</style>
+    <div className="fixed inset-0 flex flex-col items-center justify-center gap-10"
+      style={{ background: "linear-gradient(135deg,#2C001E 0%,#3b0f2f 50%,#1a0a12 100%)" }}>
+      <svg width="80" height="80" viewBox="0 0 90 90">
+        <circle cx="45" cy="45" r="42" fill="none" stroke="#E95420" strokeWidth="3" opacity=".7" />
+        {[0, 120, 240].map((deg) => {
+          const rad = (deg - 90) * (Math.PI / 180);
+          return (
+            <circle key={deg}
+              cx={45 + 28 * Math.cos(rad)}
+              cy={45 + 28 * Math.sin(rad)}
+              r="9" fill="#E95420" />
+          );
+        })}
+        <circle cx="45" cy="45" r="14" fill="#E95420" />
+      </svg>
+
+      <p className="text-white text-xl font-light tracking-widest">
+        Web Linux Agent <span className="text-orange-400 font-semibold">v2</span>
+      </p>
+
+      {/* Animated dots */}
+      <div className="flex gap-2">
+        {[0, 1, 2].map((i) => (
+          <div key={i}
+            className="w-2.5 h-2.5 rounded-full"
+            style={{
+              background: dots > i ? "#E95420" : "rgba(255,255,255,0.2)",
+              transition: "background 0.3s",
+            }} />
+        ))}
+      </div>
+
+      <p className="text-white/30 text-xs tracking-widest absolute bottom-8">
+        © 2025 Shaik Muzzammil · Ubuntu 22.04 LTS
+      </p>
     </div>
   );
 }

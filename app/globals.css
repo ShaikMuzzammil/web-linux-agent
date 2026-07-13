@@ -1,68 +1,56 @@
-@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Ubuntu+Mono:wght@400;700&display=swap');
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  --font-ubuntu: "Ubuntu", "Segoe UI", system-ui, sans-serif;
-  --font-mono:   "Ubuntu Mono", "Courier New", monospace;
-  --color-ubuntu-orange:    #E95420;
-  --color-ubuntu-purple:    #772953;
-  --color-ubuntu-aubergine: #2C001E;
+:root {
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 224 14% 10%;
+  --foreground: 213 31% 91%;
+  --card: 222 18% 13%;
+  --card-foreground: 213 31% 91%;
+  --primary: 263 80% 65%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 222 18% 18%;
+  --secondary-foreground: 213 31% 91%;
+  --muted: 223 18% 16%;
+  --muted-foreground: 215 20% 55%;
+  --accent: 263 80% 65%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 222 16% 22%;
+  --input: 222 16% 22%;
+  --ring: 263 80% 65%;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
-  height: 100%;
-  overflow: hidden;
-  font-family: "Ubuntu", "Segoe UI", system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+html, body { height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; }
 
-/* Custom scrollbar */
+body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+
+.window-content, .app-content, textarea, input, [contenteditable] { user-select: text; -webkit-user-select: text; }
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb { background: rgba(233,84,32,0.45); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(233,84,32,0.75); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 
-/* Glass morphism */
-.glass {
-  background: rgba(20,20,30,0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
-}
+.glass { background: rgba(20,20,35,0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
 
-/* Keyframe animations */
-@keyframes bootPulse {
-  0%,100% { opacity:.55; }
-  50%      { opacity:1; filter:drop-shadow(0 0 14px #E95420); }
-}
-@keyframes loadingDot {
-  0%,80%,100% { transform:scale(.25); opacity:.25; }
-  40%          { transform:scale(1);  opacity:1;   }
-}
-@keyframes fadeInUp {
-  from { opacity:0; transform:translateY(18px); }
-  to   { opacity:1; transform:translateY(0);    }
-}
-@keyframes slideDown {
-  from { opacity:0; transform:translateY(-8px); }
-  to   { opacity:1; transform:translateY(0);    }
-}
-@keyframes glowPulse {
-  0%,100% { box-shadow:0 0 6px rgba(233,84,32,.3); }
-  50%      { box-shadow:0 0 22px rgba(233,84,32,.7),0 0 44px rgba(233,84,32,.25); }
-}
-@keyframes spinLoop { to { transform:rotate(360deg); } }
-@keyframes bounceY {
-  0%,100% { transform:translateY(0);   }
-  50%      { transform:translateY(-6px); }
-}
+.window-frame { box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.5); }
+.window-frame.focused { box-shadow: 0 0 0 1px rgba(124,77,255,0.25), 0 12px 40px rgba(0,0,0,0.6); }
 
-.animate-fade-in-up { animation: fadeInUp  .45s ease forwards; }
-.animate-slide-down { animation: slideDown .2s  ease forwards; }
-.animate-glow-pulse { animation: glowPulse 2s   ease-in-out infinite; }
-.animate-spin       { animation: spinLoop  .8s  linear infinite; }
-.animate-pulse      { animation: glowPulse 1.5s ease-in-out infinite; }
-.animate-bounce     { animation: bounceY   1.2s ease-in-out infinite; }
+.traffic-btn { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; flex-shrink: 0; transition: filter 0.15s; }
+.traffic-btn:hover { filter: brightness(1.2); }
+
+.font-mono-terminal { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace; }
+
+@keyframes loginEnter { from { opacity: 0; transform: scale(0.94) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes bootPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes windowOpen { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes notificationSlide { from { opacity: 0; transform: translateX(110%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }

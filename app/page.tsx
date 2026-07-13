@@ -1,80 +1,108 @@
-"use client";
-import { useEffect, useState, Component, ReactNode } from "react";
-import { useDesktopStore } from "@/store/desktopStore";
-import dynamic from "next/dynamic";
+'use client';
+import { useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useOSStore } from '@/hooks/useOSStore';
+import BootSequence from '@/components/os/BootSequence';
+import LoginScreen from '@/components/os/LoginScreen';
+import TopPanel from '@/components/os/TopPanel';
+import Dock from '@/components/os/Dock';
+import Desktop from '@/components/os/Desktop';
+import WindowManager from '@/components/os/WindowManager';
+import AppLauncher from '@/components/os/AppLauncher';
+import ContextMenu from '@/components/os/ContextMenu';
+import NotificationCenter, { NotificationToasts } from '@/components/os/NotificationCenter';
 
-const BootScreen = dynamic(() => import("@/components/boot/BootScreen"),  { ssr: false });
-const LockScreen = dynamic(() => import("@/components/boot/LockScreen"),  { ssr: false });
-const Desktop    = dynamic(() => import("@/components/desktop/Desktop"),   { ssr: false });
+export default function OS() {
+  const { data: session, status } = useSession();
+  const { bootPhase, theme, auth, setBootPhase, login, initDock, setTheme } = useOSStore();
 
-// ── Inline error boundary so a runtime crash shows a recovery UI
-// instead of the full-page "Something went wrong" from app/error.tsx
-class DesktopBoundary extends Component<
-  { children: ReactNode },
-  { hasError: boolean; message: string }
-> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, message: "" };
-  }
-  static getDerivedStateFromError(err: Error) {
-    return { hasError: true, message: err?.message ?? String(err) };
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="fixed inset-0 flex flex-col items-center justify-center gap-6"
-          style={{ background: "linear-gradient(135deg,#0a0a1a,#1a0a2e,#0a0a1a)" }}>
-          <div className="text-6xl">⚠️</div>
-          <h2 className="text-white text-xl font-semibold">Something went wrong</h2>
-          <p className="text-white/40 text-sm text-center max-w-sm px-4">
-            {this.state.message}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2.5 rounded-full text-white text-sm font-medium"
-            style={{ background: "#E95420" }}
-          >
-            Reload
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-export default function Home() {
-  const [mounted, setMounted] = useState(false);
-  const { isBooting, isLocked, setIsBooting, setBootComplete } = useDesktopStore();
-
-  useEffect(() => { setMounted(true); }, []);
-
+  // ── Boot sequence ────────────────────────────────────────────
   useEffect(() => {
-    if (!mounted) return;
-    const timer = setTimeout(() => {
-      setIsBooting(false);
-      setBootComplete(true);
-    }, 4500);
-    return () => clearTimeout(timer);
-  }, [mounted, setIsBooting, setBootComplete]);
+    if (bootPhase === 'off') {
+      setBootPhase('booting');
+    }
+  }, []);
 
-  if (!mounted) {
+  // ── Sync session → OS store ──────────────────────────────────
+  useEffect(() => {
+    if (status === 'loading' || bootPhase === 'off' || bootPhase === 'booting') return;
+    if (status === 'authenticated' && session?.user) {
+      login({
+        isAuthenticated: true,
+        isGuest: false,
+        userId: session.user.id,
+        userName: session.user.name || 'User',
+        userEmail: session.user.email || null,
+        userImage: session.user.image || null,
+      });
+      // Load cloud settings
+      loadSettings(session.user.id);
+    } else if (status === 'unauthenticated' && !auth.isGuest) {
+      setBootPhase('login');
+    }
+  }, [session, status, bootPhase]);
+
+  const loadSettings = useCallback(async (userId: string) => {
+    try {
+      const res = await fetch('/api/sync/settings');
+      const { settings } = await res.json();
+      if (settings) {
+        setTheme({ mode: settings.themeMode, accent: settings.accentColor, wallpaper: settings.wallpaper });
+        initDock(settings.dockPinned);
+      }
+    } catch { /* offline */ }
+  }, [setTheme, initDock]);
+
+  // ── Theme class on <html> ────────────────────────────────────
+  useEffect(() => {
+    document.documentElement.className = theme.mode;
+  }, [theme.mode]);
+
+  // ── Wallpaper CSS var ────────────────────────────────────────
+  useEffect(() => {
+    document.documentElement.style.setProperty('--wallpaper', `url(${theme.wallpaper})`);
+    document.documentElement.style.setProperty('--accent', theme.accent);
+  }, [theme]);
+
+  const onBootComplete = useCallback(() => {
+    setBootPhase('login');
+  }, [setBootPhase]);
+
+  // ── Render ───────────────────────────────────────────────────
+  if (bootPhase === 'off' || bootPhase === 'booting') {
+    return <BootSequence onComplete={onBootComplete} />;
+  }
+
+  if (bootPhase === 'login' || (!auth.isAuthenticated && !auth.isGuest)) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white/20 text-sm" style={{ fontFamily: "Ubuntu, sans-serif" }}>
-          Loading…
-        </div>
+      <div
+        className="fixed inset-0"
+        style={{ backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        <LoginScreen />
       </div>
     );
   }
 
-  if (isBooting) return <BootScreen />;
-  if (isLocked)  return <LockScreen />;
-
   return (
-    <DesktopBoundary>
-      <Desktop />
-    </DesktopBoundary>
+    <div
+      className="fixed inset-0 overflow-hidden"
+      style={{ backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      {/* Subtle overlay for readability */}
+      <div className="absolute inset-0" style={{ background: theme.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }} />
+
+      {/* OS Shell */}
+      <div className="relative z-0 w-full h-full">
+        <TopPanel />
+        <Desktop />
+        <WindowManager />
+        <Dock />
+        <AppLauncher />
+        <ContextMenu />
+        <NotificationCenter />
+        <NotificationToasts />
+      </div>
+    </div>
   );
 }

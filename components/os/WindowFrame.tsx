@@ -57,15 +57,13 @@ export default memo(function WindowFrame({ window: win, children }: Props) {
       } else if (resize.current) {
         const r = resize.current;
         const dx = e.clientX - r.sx, dy = e.clientY - r.sy;
-        let { ow: nw, oh: nh, ox: nx, oy: ny } = r;
-        if (r.edge.includes('e')) nw = Math.max(320, ow(r) + dx);
-        if (r.edge.includes('s')) nh = Math.max(200, oh(r) + dy);
+        let nw = r.ow, nh = r.oh, nx = r.ox, ny = r.oy;
+        if (r.edge.includes('e')) nw = Math.max(320, r.ow + dx);
+        if (r.edge.includes('s')) nh = Math.max(200, r.oh + dy);
         if (r.edge.includes('w')) { nw = Math.max(320, r.ow - dx); nx = r.ox + (r.ow - nw); }
         if (r.edge.includes('n')) { nh = Math.max(200, r.oh - dy); ny = Math.max(TOP_PANEL_H, r.oy + (r.oh - nh)); }
         moveWindow(win.id, { x: nx, y: ny });
         resizeWindow(win.id, { width: nw, height: nh });
-        function ow(r: typeof resize.current) { return r!.ow; }
-        function oh(r: typeof resize.current) { return r!.oh; }
       }
     };
     const up = () => { drag.current = null; resize.current = null; setIsDragging(false); };

@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --radius: 0.75rem;
-}
+:root { --radius: 0.75rem; }
 
 .dark {
   --background: 224 14% 10%;
@@ -27,30 +25,29 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 html, body { height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; }
-
 body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
 
-.window-content, .app-content, textarea, input, [contenteditable] { user-select: text; -webkit-user-select: text; }
+.window-content, .app-content, textarea, input, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
 .glass { background: rgba(20,20,35,0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
-
 .window-frame { box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.5); }
 .window-frame.focused { box-shadow: 0 0 0 1px rgba(124,77,255,0.25), 0 12px 40px rgba(0,0,0,0.6); }
-
 .traffic-btn { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; flex-shrink: 0; transition: filter 0.15s; }
 .traffic-btn:hover { filter: brightness(1.2); }
+.font-mono-terminal { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
 
-.font-mono-terminal { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace; }
-
-@keyframes loginEnter { from { opacity: 0; transform: scale(0.94) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-@keyframes bootPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes windowOpen { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
-@keyframes notificationSlide { from { opacity: 0; transform: translateX(110%); } to { opacity: 1; transform: translateX(0); } }
-@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes fade-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes loginEnter { from { opacity:0; transform:scale(0.94) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
+@keyframes bootPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+@keyframes windowOpen { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+@keyframes notificationSlide { from { opacity:0; transform:translateX(110%); } to { opacity:1; transform:translateX(0); } }
+@keyframes spin-slow { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+@keyframes fade-in { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }

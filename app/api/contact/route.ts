@@ -1,57 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextResponse } from 'next/server';
+import { resend } from '@/lib/resend';
 
-export async function POST(req: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { name, email, subject, message } = body;
+    const { name, email, message } = await req.json();
 
-    // Validation
-    if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) {
-      return NextResponse.json({ error: "All fields are required." }, { status: 400 });
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
-    }
-    if (message.trim().length < 10) {
-      return NextResponse.json({ error: "Message must be at least 10 characters." }, { status: 400 });
+    if (!name || !email || !message) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const session = await auth();
-
-    // Save to DB (non-blocking — don't fail the request if DB is down)
-    try {
-      const { prisma } = await import("@/lib/prisma");
-      await prisma.contactMessage.create({
-        data: {
-          name:    name.trim(),
-          email:   email.trim().toLowerCase(),
-          subject: subject.trim(),
-          message: message.trim(),
-          userId:  session?.user?.id ?? null,
-        },
-      });
-    } catch (dbErr) {
-      console.error("[contact] DB save failed (non-fatal):", dbErr);
+    if (!process.env.RESEND_API_KEY) {
+      // No API key configured — just return success silently
+      return NextResponse.json({ ok: true, note: 'Email not configured' });
     }
 
-    // Send emails (non-blocking)
-    try {
-      const { sendContactEmail, sendConfirmationEmail } = await import("@/lib/resend");
-      await Promise.allSettled([
-        sendContactEmail({ name, email, subject, message }),
-        sendConfirmationEmail({ name, email, subject }),
-      ]);
-    } catch (emailErr) {
-      console.error("[contact] Email send failed (non-fatal):", emailErr);
-    }
+    await resend.emails.send({
+      from: 'WebLinuxOS <noreply@yourdomain.com>',
+      to: process.env.CONTACT_EMAIL || email,
+      subject: `Contact from ${name}`,
+      html: `
+        <h2>New Contact Message</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+      `,
+    });
 
-    return NextResponse.json({ success: true, message: "Message sent!" });
-  } catch (err) {
-    console.error("[contact] Unexpected error:", err);
-    return NextResponse.json(
-      { error: "Failed to send. Please try again later." },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('Contact route error:', error);
+    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
   }
 }

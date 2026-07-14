@@ -20,6 +20,7 @@
     "@auth/prisma-adapter": "^2.7.4",
     "zustand": "^4.5.5",
     "bcryptjs": "^2.4.3",
+    "resend": "^3.5.0",
     "lucide-react": "^0.462.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -33,7 +33,7 @@ export default function Chess({ windowId }: { windowId: string }) {
   return (
     <div className="flex flex-col items-center h-full gap-2 p-3" style={{background:theme.mode==='dark'?'#0d0d1a':'#f5f5fb',color:theme.mode==='dark'?'#e2e8f0':'#1e1e2e'}}>
       <div className="flex items-center justify-between w-full max-w-xs">
-        <div className="text-xs"><span className="opacity-40">{turn==='w'?'White':'Black'}&apos;s turn</span></div>
+        <div className="text-xs"><span className="opacity-40">{turn==='w'?'White':'Black'}'s turn</span></div>
         <button onClick={reset} className="p-1.5 rounded-lg hover:bg-white/10"><RotateCcw size={14}/></button>
       </div>
       <div className="text-xs opacity-40 text-center">{captured.b.join(' ')||'—'}</div>

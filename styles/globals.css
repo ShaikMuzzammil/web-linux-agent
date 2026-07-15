@@ -4,9 +4,8 @@
 
 :root {
   --radius: 0.75rem;
-  --accent: #7C4DFF;
+  --accent: #E95420;
 
-  /* Light mode */
   --background: 210 20% 95%;
   --foreground: 240 10% 10%;
   --card: 0 0% 100%;
@@ -17,13 +16,11 @@
   --secondary-foreground: 240 10% 15%;
   --muted: 210 20% 90%;
   --muted-foreground: 240 5% 45%;
-  --accent: 263 80% 65%;
-  --accent-foreground: 0 0% 100%;
   --destructive: 0 85% 60%;
   --destructive-foreground: 0 0% 100%;
   --border: 214 32% 88%;
   --input: 214 32% 88%;
-  --ring: 263 80% 65%;
+  --ring: 17 80% 51%;
 }
 
 .dark {
@@ -31,19 +28,17 @@
   --foreground: 213 31% 91%;
   --card: 222 18% 13%;
   --card-foreground: 213 31% 91%;
-  --primary: 263 80% 65%;
+  --primary: 17 80% 51%;
   --primary-foreground: 0 0% 100%;
   --secondary: 222 18% 18%;
   --secondary-foreground: 213 31% 91%;
   --muted: 223 18% 16%;
   --muted-foreground: 215 20% 55%;
-  --accent: 263 80% 65%;
-  --accent-foreground: 0 0% 100%;
   --destructive: 0 62% 50%;
   --destructive-foreground: 0 0% 100%;
   --border: 222 16% 22%;
   --input: 222 16% 22%;
-  --ring: 263 80% 65%;
+  --ring: 17 80% 51%;
 }
 
 * {
@@ -60,32 +55,45 @@ html, body {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Allow text selection in apps */
+/* Allow text selection in app content */
 .window-content, .app-content, textarea, input, [contenteditable] {
   user-select: text;
   -webkit-user-select: text;
 }
 
-/* Scrollbar */
+/* ── Scrollbar ──────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
-/* Boot animation */
-@keyframes loginEnter {
-  from { opacity: 0; transform: scale(0.94) translateY(12px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+/* ── Keyframes ──────────────────────────────────────────────── */
+
+/* Boot screen Ubuntu ring spinner  */
+@keyframes wlos-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Legacy alias kept for any existing usage */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 @keyframes bootPulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
+  50%       { opacity: 0; }
+}
+
+@keyframes loginEnter {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes windowOpen {
@@ -104,12 +112,27 @@ body {
   60%       { transform: translateY(-6px); }
 }
 
-/* Glass panel utility */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Utility classes ────────────────────────────────────────── */
 .glass {
-  background: rgba(30, 30, 46, 0.75);
+  background: rgba(20, 14, 10, 0.78);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.07);
 }
 
 .glass-light {
@@ -119,22 +142,22 @@ body {
   border: 1px solid rgba(0,0,0,0.08);
 }
 
-/* Window chrome */
+/* ── Window chrome ──────────────────────────────────────────── */
 .window-frame {
   box-shadow:
     0 0 0 1px rgba(255,255,255,0.06),
-    0 8px 32px rgba(0,0,0,0.5),
+    0 8px 32px rgba(0,0,0,0.55),
     0 2px 8px rgba(0,0,0,0.3);
 }
 
 .window-frame.focused {
   box-shadow:
-    0 0 0 1px rgba(124,77,255,0.3),
+    0 0 0 1px rgba(233,84,32,0.35),
     0 12px 40px rgba(0,0,0,0.6),
     0 2px 8px rgba(0,0,0,0.4);
 }
 
-/* Traffic lights */
+/* ── Traffic lights ─────────────────────────────────────────── */
 .traffic-btn {
   width: 12px;
   height: 12px;
@@ -144,25 +167,18 @@ body {
   transition: filter 0.15s;
   flex-shrink: 0;
 }
+.traffic-btn:hover { filter: brightness(1.25); }
 
-.traffic-btn:hover { filter: brightness(1.2); }
+/* ── App launcher ───────────────────────────────────────────── */
+.app-launcher { animation: fade-in 0.18s ease-out; }
 
-/* App launcher grid */
-.app-launcher {
-  animation: fade-in 0.18s ease-out;
-}
+/* ── Notification toast ─────────────────────────────────────── */
+.notification-toast { animation: notificationSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-/* Notification toast */
-.notification-toast {
-  animation: notificationSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+/* ── Dock bounce ────────────────────────────────────────────── */
+.dock-bounce { animation: dockBounce 0.4s ease; }
 
-/* Dock bounce */
-.dock-bounce {
-  animation: dockBounce 0.4s ease;
-}
-
-/* Terminal font */
+/* ── Terminal font ──────────────────────────────────────────── */
 .font-mono-terminal {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Ubuntu Mono', 'Courier New', monospace;
 }

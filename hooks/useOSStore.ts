@@ -120,7 +120,7 @@ export const useOSStore = create<OSStore>()(
     auth: { isAuthenticated: false, isGuest: false, userId: null, userName: 'User', userEmail: null, userImage: null },
     windows: [],
     desktopIcons: loadFromStorage('wlos_desktop_icons', defaultDesktopIcons),
-    theme: loadFromStorage('wlos_theme', { mode: 'dark' as const, accent: '#7C4DFF', wallpaper: '/wallpapers/default.svg' }),
+    theme: loadFromStorage('wlos_theme', { mode: 'dark' as const, accent: '#E95420', wallpaper: '/wallpapers/default.svg' }),
     notifications: [],
     dockItems: createDockItems(DEFAULT_DOCK),
     contextMenu: { visible: false, x: 0, y: 0, type: 'desktop', items: [] },

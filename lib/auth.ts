@@ -46,7 +46,13 @@ export const authOptions: NextAuthOptions = {
           await prisma.userSettings.create({
             data: {
               userId: user.id,
-              dockPinned: ['filemanager', 'terminal', 'texteditor', 'browser', 'settings'],
+              themeMode:    'dark',
+              accentColor:  '#E95420',
+              wallpaper:    '/wallpapers/default.svg',
+              fontSize:     'medium',
+              dockPinned:   ['filemanager', 'terminal', 'texteditor', 'browser', 'settings'],
+              animations:   true,
+              notifications: true,
             },
           });
 
@@ -113,7 +119,13 @@ export const authOptions: NextAuthOptions = {
           await prisma.userSettings.create({
             data: {
               userId: user.id,
-              dockPinned: ['filemanager', 'terminal', 'texteditor', 'browser', 'settings'],
+              themeMode:    'dark',
+              accentColor:  '#E95420',
+              wallpaper:    '/wallpapers/default.svg',
+              fontSize:     'medium',
+              dockPinned:   ['filemanager', 'terminal', 'texteditor', 'browser', 'settings'],
+              animations:   true,
+              notifications: true,
             },
           });
         }

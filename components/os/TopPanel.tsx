@@ -42,10 +42,21 @@ export default memo(function TopPanel() {
       <div className="flex items-center gap-4 flex-1">
         <button
           onClick={() => setAppLauncher(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-70 transition-opacity"
+          className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition-opacity"
           style={{ color: theme.accent }}
         >
-          <span className="text-sm">λ</span>
+          {/* Ubuntu circle-of-friends icon */}
+          <svg width="16" height="16" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="9"  r="9"  fill="currentColor"/>
+            <circle cx="14" cy="71" r="9"  fill="currentColor"/>
+            <circle cx="86" cy="71" r="9"  fill="currentColor"/>
+            <path d="M50 18 A32 32 0 0 1 77.7 64" stroke="currentColor" strokeWidth="6" fill="none" strokeLinecap="round"/>
+            <path d="M77.7 64 A32 32 0 0 1 22.3 64" stroke="currentColor" strokeWidth="6" fill="none" strokeLinecap="round"/>
+            <path d="M22.3 64 A32 32 0 0 1 50 18" stroke="currentColor" strokeWidth="6" fill="none" strokeLinecap="round"/>
+            <circle cx="50" cy="9"  r="4" fill="white"/>
+            <circle cx="14" cy="71" r="4" fill="white"/>
+            <circle cx="86" cy="71" r="4" fill="white"/>
+          </svg>
           <span className="hidden sm:block">WebLinuxOS</span>
         </button>
 

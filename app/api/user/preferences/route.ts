@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const prefs = await prisma.userPreferences.findUnique({
+    const prefs = await prisma.userSettings.findUnique({
       where: { userId: session.user.id },
     });
     return NextResponse.json({ prefs });
@@ -20,16 +21,16 @@ export async function GET() {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const body = await req.json();
-    const ALLOWED = ["wallpaper", "theme", "accentColor", "fontSize", "terminalTheme", "dockSize"] as const;
+    const ALLOWED = ["wallpaper", "themeMode", "accentColor", "fontSize", "animations", "notifications"] as const;
     const data = Object.fromEntries(
       Object.entries(body).filter(([k]) => (ALLOWED as readonly string[]).includes(k))
     );
-    const prefs = await prisma.userPreferences.upsert({
+    const prefs = await prisma.userSettings.upsert({
       where:  { userId: session.user.id },
       update: data,
       create: { userId: session.user.id, ...data },

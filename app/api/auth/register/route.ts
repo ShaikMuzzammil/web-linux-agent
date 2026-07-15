@@ -27,14 +27,15 @@ export async function POST(req: NextRequest) {
         name:     name?.trim() || email.split("@")[0],
         email:    email.toLowerCase(),
         password: hashed,
-        preferences: {
+        settings: {
           create: {
-            wallpaper:     "warty-final-ubuntu",
-            theme:         "dark",
-            accentColor:   "#E95420",
-            fontSize:      14,
-            terminalTheme: "ubuntu",
-            dockSize:      48,
+            wallpaper:    "/wallpapers/default.svg",
+            themeMode:    "dark",
+            accentColor:  "#E95420",
+            fontSize:     "medium",
+            dockPinned:   ["filemanager", "terminal", "texteditor", "browser", "settings"],
+            animations:   true,
+            notifications: true,
           },
         },
       },

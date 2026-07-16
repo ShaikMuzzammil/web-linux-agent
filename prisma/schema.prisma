@@ -196,7 +196,7 @@ model UserSettings {
   userId       String   @unique
   themeMode    String   @default("dark")
   accentColor  String   @default("#7C4DFF")
-  wallpaper    String   @default("/wallpapers/default.jpg")
+  wallpaper    String   @default("/wallpapers/default.svg")
   dockPinned   String[] @default([])
   desktopIcons String   @db.Text @default("{}")
   fontSize     String   @default("medium")

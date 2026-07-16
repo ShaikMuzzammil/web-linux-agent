@@ -127,6 +127,21 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes bootStepIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes accentPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(233,84,32,0.6); }
+  50%       { box-shadow: 0 0 22px rgba(233,84,32,1.0); }
+}
+
+@keyframes ringGlow {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
+}
+
 /* ── Utility classes ────────────────────────────────────────── */
 .glass {
   background: rgba(20, 14, 10, 0.78);

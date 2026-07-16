@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep Node.js-only packages (pg, bcryptjs) out of the client bundle
+  // Keep Node.js-only packages out of the client bundle
   serverExternalPackages: ["pg", "bcryptjs", "@prisma/client", "@prisma/adapter-pg"],
 
   images: {
@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "github.com" },
     ],
   },
+
+  // Suppress React hydration warnings from browser extensions
+  reactStrictMode: false,
 };
 
 export default nextConfig;

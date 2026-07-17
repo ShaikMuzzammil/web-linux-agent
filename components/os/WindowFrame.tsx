@@ -145,25 +145,28 @@ export default memo(function WindowFrame({ window: win, children }: Props) {
         onDoubleClick={handleTitleDblClick}
       >
         {/* Traffic lights */}
-        <div className="flex gap-1.5 flex-shrink-0">
+        <div className="flex gap-1.5 flex-shrink-0 group/tl">
           <button
-            className="traffic-btn"
-            style={{ background: '#FF5F57' }}
+            className="traffic-btn relative flex items-center justify-center"
+            style={{ background: '#FF5F57', width: 13, height: 13 }}
             onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
-            title="Close"
-          />
+            title="Close">
+            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 8, lineHeight: 1 }}>✕</span>
+          </button>
           <button
-            className="traffic-btn"
-            style={{ background: '#FFBD2E' }}
+            className="traffic-btn relative flex items-center justify-center"
+            style={{ background: '#FFBD2E', width: 13, height: 13 }}
             onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
-            title="Minimize"
-          />
+            title="Minimize">
+            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 9, lineHeight: 1 }}>−</span>
+          </button>
           <button
-            className="traffic-btn"
-            style={{ background: '#28C840' }}
+            className="traffic-btn relative flex items-center justify-center"
+            style={{ background: '#28C840', width: 13, height: 13 }}
             onClick={(e) => { e.stopPropagation(); isMax ? restoreWindow(win.id) : maximizeWindow(win.id); }}
-            title={isMax ? 'Restore' : 'Maximize'}
-          />
+            title={isMax ? 'Restore' : 'Maximize'}>
+            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 8, lineHeight: 1 }}>{isMax ? '⊡' : '⊞'}</span>
+          </button>
         </div>
 
         {/* Window title */}
@@ -177,8 +180,15 @@ export default memo(function WindowFrame({ window: win, children }: Props) {
           </span>
         </div>
 
-        {/* Right padding for symmetry */}
-        <div className="w-14 flex-shrink-0" />
+        {/* Right area: window controls */}
+        <div className="w-14 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={e => { e.stopPropagation(); minimizeWindow(win.id); }} className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors" title="Minimize">
+            <Icons.Minus size={10} />
+          </button>
+          <button onClick={e => { e.stopPropagation(); isMax ? restoreWindow(win.id) : maximizeWindow(win.id); }} className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors" title={isMax ? 'Restore' : 'Maximize'}>
+            {isMax ? <Icons.Minimize2 size={10} /> : <Icons.Maximize2 size={10} />}
+          </button>
+        </div>
       </div>
 
       {/* App content */}

@@ -13,12 +13,13 @@ const ACCENT_COLORS = [
 ];
 
 const WALLPAPERS = [
+  { name: 'Ubuntu Dark', path: '/wallpapers/ubuntu-dark.svg', preview: 'linear-gradient(135deg, #1a0a05 0%, #080506 100%)' },
   { name: 'Default', path: '/wallpapers/default.svg', preview: 'linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 50%, #0d1a2e 100%)' },
-  { name: 'Aurora', path: '/wallpapers/aurora.jpg', preview: 'linear-gradient(135deg, #001a33 0%, #004d00 50%, #330033 100%)' },
-  { name: 'Sunset', path: '/wallpapers/sunset.jpg', preview: 'linear-gradient(135deg, #1a0a00 0%, #4d1a00 50%, #660033 100%)' },
-  { name: 'Ocean', path: '/wallpapers/ocean.jpg', preview: 'linear-gradient(135deg, #001a4d 0%, #003366 50%, #001a33 100%)' },
-  { name: 'Forest', path: '/wallpapers/forest.jpg', preview: 'linear-gradient(135deg, #001a00 0%, #003300 50%, #001400 100%)' },
-  { name: 'Space', path: '/wallpapers/space.jpg', preview: 'linear-gradient(135deg, #000000 0%, #0d001a 50%, #000d1a 100%)' },
+  { name: 'Aurora', path: '/wallpapers/aurora.svg', preview: 'linear-gradient(135deg, #0a0a1a 0%, #0a3320 50%, #1a0a2e 100%)' },
+  { name: 'Nebula', path: '/wallpapers/nebula.svg', preview: 'linear-gradient(135deg, #0d0520 0%, #000d30 50%, #100520 100%)' },
+  { name: 'Cyberpunk', path: '/wallpapers/cyberpunk.svg', preview: 'linear-gradient(135deg, #0a0008 0%, #1a0520 50%, #2a0510 100%)' },
+  { name: 'Mountain', path: '/wallpapers/mountain.svg', preview: 'linear-gradient(135deg, #0a0818 0%, #1a0e2e 50%, #2d1520 100%)' },
+  { name: 'Ocean', path: '/wallpapers/ocean.svg', preview: 'linear-gradient(135deg, #020d18 0%, #041520 50%, #021018 100%)' },
 ];
 
 type Section = 'appearance' | 'wallpaper' | 'dock' | 'notifications' | 'account' | 'about';

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="80%">
+      <stop offset="0%" stop-color="#0d0520"/>
+      <stop offset="100%" stop-color="#000005"/>
+    </radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="50"/></filter>
+    <filter id="glow2"><feGaussianBlur stdDeviation="80"/></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <ellipse cx="400" cy="400" rx="600" ry="400" fill="rgba(120,0,255,0.15)" filter="url(#glow2)"/>
+  <ellipse cx="1500" cy="600" rx="500" ry="350" fill="rgba(0,100,255,0.12)" filter="url(#glow2)"/>
+  <ellipse cx="960" cy="200" rx="400" ry="200" fill="rgba(255,50,100,0.08)" filter="url(#glow)"/>
+  <ellipse cx="960" cy="540" rx="200" ry="150" fill="rgba(200,100,255,0.12)" filter="url(#glow)"/>
+  <g fill="white">
+    <circle cx="960" cy="540" r="2" opacity="0.8"/><circle cx="200" cy="100" r="1.5" opacity="0.7"/>
+    <circle cx="1700" cy="150" r="1" opacity="0.9"/><circle cx="400" cy="800" r="1.5" opacity="0.6"/>
+    <circle cx="1500" cy="900" r="1" opacity="0.8"/><circle cx="600" cy="300" r="1.2" opacity="0.7"/>
+    <circle cx="1200" cy="200" r="1" opacity="0.9"/><circle cx="800" cy="700" r="1.5" opacity="0.5"/>
+    <circle cx="1600" cy="500" r="1" opacity="0.8"/><circle cx="300" cy="600" r="1.2" opacity="0.6"/>
+    <circle cx="1100" cy="900" r="1" opacity="0.7"/><circle cx="700" cy="150" r="1.5" opacity="0.8"/>
+  </g>
+</svg>

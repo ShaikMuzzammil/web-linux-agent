@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="ubg" cx="30%" cy="60%" r="80%">
+      <stop offset="0%" stop-color="#1a0a05"/>
+      <stop offset="100%" stop-color="#080506"/>
+    </radialGradient>
+    <filter id="ublur"><feGaussianBlur stdDeviation="80"/></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#ubg)"/>
+  <circle cx="400" cy="700" r="500" fill="rgba(233,84,32,0.08)" filter="url(#ublur)"/>
+  <circle cx="1600" cy="300" r="400" fill="rgba(180,50,10,0.06)" filter="url(#ublur)"/>
+  <!-- Grid lines -->
+  <g stroke="rgba(233,84,32,0.04)" strokeWidth="1">
+    <line x1="0" y1="200" x2="1920" y2="200"/>
+    <line x1="0" y1="400" x2="1920" y2="400"/>
+    <line x1="0" y1="600" x2="1920" y2="600"/>
+    <line x1="0" y1="800" x2="1920" y2="800"/>
+    <line x1="320" y1="0" x2="320" y2="1080"/>
+    <line x1="640" y1="0" x2="640" y2="1080"/>
+    <line x1="960" y1="0" x2="960" y2="1080"/>
+    <line x1="1280" y1="0" x2="1280" y2="1080"/>
+    <line x1="1600" y1="0" x2="1600" y2="1080"/>
+  </g>
+  <!-- Ubuntu circle watermark -->
+  <g transform="translate(960,540)" opacity="0.04">
+    <circle cx="0" cy="-160" r="60" fill="#E95420"/>
+    <circle cx="-138" cy="80" r="60" fill="#E95420"/>
+    <circle cx="138" cy="80" r="60" fill="#E95420"/>
+    <path d="M0,-100 A120,120 0 0 1 103,50" stroke="#E95420" strokeWidth="20" fill="none"/>
+    <path d="M103,50 A120,120 0 0 1 -103,50" stroke="#E95420" strokeWidth="20" fill="none"/>
+    <path d="M-103,50 A120,120 0 0 1 0,-100" stroke="#E95420" strokeWidth="20" fill="none"/>
+  </g>
+</svg>

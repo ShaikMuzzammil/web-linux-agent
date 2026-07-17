@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sunsky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0818"/>
+      <stop offset="40%" stop-color="#1a0e2e"/>
+      <stop offset="70%" stop-color="#2d1520"/>
+      <stop offset="90%" stop-color="#E95420" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#E95420" stop-opacity="0.2"/>
+    </linearGradient>
+    <filter id="sunblur"><feGaussianBlur stdDeviation="40"/></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sunsky)"/>
+  <!-- Sun glow -->
+  <circle cx="960" cy="650" r="300" fill="rgba(233,84,32,0.12)" filter="url(#sunblur)"/>
+  <circle cx="960" cy="660" r="100" fill="rgba(255,120,0,0.18)" filter="url(#sunblur)"/>
+  <!-- Mountains back -->
+  <path d="M0,800 L200,500 L400,650 L600,400 L800,580 L960,350 L1120,560 L1320,420 L1500,600 L1700,450 L1920,550 L1920,1080 L0,1080Z" fill="#0d0a18"/>
+  <!-- Mountains front -->
+  <path d="M0,900 L300,650 L500,780 L700,600 L960,500 L1220,600 L1450,730 L1650,580 L1920,700 L1920,1080 L0,1080Z" fill="#08060f"/>
+  <!-- Ground -->
+  <rect x="0" y="950" width="1920" height="130" fill="#050408"/>
+</svg>

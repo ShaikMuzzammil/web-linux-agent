@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="0%" r="100%">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="100%" stop-color="#020208"/>
+    </radialGradient>
+    <filter id="blur1"><feGaussianBlur stdDeviation="40"/></filter>
+    <filter id="blur2"><feGaussianBlur stdDeviation="60"/></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <!-- Aurora bands -->
+  <ellipse cx="960" cy="200" rx="900" ry="300" fill="rgba(0,255,150,0.12)" filter="url(#blur1)"/>
+  <ellipse cx="700" cy="280" rx="700" ry="200" fill="rgba(0,200,255,0.10)" filter="url(#blur2)"/>
+  <ellipse cx="1200" cy="180" rx="600" ry="180" fill="rgba(100,0,255,0.13)" filter="url(#blur1)"/>
+  <ellipse cx="500" cy="350" rx="500" ry="150" fill="rgba(0,255,180,0.08)" filter="url(#blur2)"/>
+  <ellipse cx="1400" cy="300" rx="500" ry="160" fill="rgba(50,100,255,0.10)" filter="url(#blur1)"/>
+  <!-- Stars -->
+  <g fill="white" opacity="0.6">
+    <circle cx="100" cy="50" r="1"/><circle cx="300" cy="80" r="0.8"/><circle cx="500" cy="30" r="1.2"/>
+    <circle cx="700" cy="60" r="0.9"/><circle cx="900" cy="40" r="1"/><circle cx="1100" cy="70" r="0.8"/>
+    <circle cx="1300" cy="50" r="1.1"/><circle cx="1500" cy="35" r="0.9"/><circle cx="1700" cy="65" r="1"/>
+    <circle cx="200" cy="120" r="0.7"/><circle cx="800" cy="100" r="1.3"/><circle cx="1600" cy="110" r="0.8"/>
+  </g>
+  <!-- Ground silhouette -->
+  <rect x="0" y="900" width="1920" height="180" fill="rgba(0,0,0,0.5)"/>
+  <path d="M0,920 Q200,880 400,910 Q600,940 800,900 Q1000,860 1200,890 Q1400,920 1600,900 Q1800,880 1920,910 L1920,1080 L0,1080Z" fill="rgba(0,0,0,0.6)"/>
+</svg>

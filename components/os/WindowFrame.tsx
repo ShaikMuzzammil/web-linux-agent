@@ -1,219 +1,200 @@
 'use client';
-import { memo, useRef, useState, useCallback, useEffect } from 'react';
-import { X, Minus, Square, ChevronUp } from 'lucide-react';
+import { memo, useCallback, useRef, useState, useEffect } from 'react';
+import * as Icons from 'lucide-react';
+import type { LucideProps } from 'lucide-react';
+import type { OSWindow } from '@/types';
 import { useOSStore } from '@/hooks/useOSStore';
-import type { Window as OSWindow } from '@/types';
+
+const TOP_PANEL_H = 28;
+const RESIZE_HANDLE = 7;
+
+const DynIcon = ({ name, ...p }: { name: string } & LucideProps) => {
+  const C = (Icons as unknown as Record<string, React.ComponentType<LucideProps>>)[name];
+  return C ? <C {...p} /> : <Icons.Box {...p} />;
+};
 
 interface Props { window: OSWindow; children: React.ReactNode }
-type ResizeDir = 'n'|'s'|'e'|'w'|'ne'|'nw'|'se'|'sw';
-const MIN_W = 340, MIN_H = 220;
 
 export default memo(function WindowFrame({ window: win, children }: Props) {
-  const { focusWindow, closeWindow, minimizeWindow, maximizeWindow, moveWindow, resizeWindow, theme } = useOSStore();
+  const { theme, focusWindow, closeWindow, minimizeWindow, maximizeWindow, restoreWindow, moveWindow, resizeWindow } = useOSStore();
   const frameRef = useRef<HTMLDivElement>(null);
-  const dragState = useRef<{sx:number;sy:number;ox:number;oy:number}|null>(null);
-  const resizeState = useRef<{dir:ResizeDir;sx:number;sy:number;ox:number;oy:number;ow:number;oh:number}|null>(null);
-  const [snapGhost, setSnapGhost] = useState<null|'left'|'right'|'max'>(null);
+  const drag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
+  const resize = useRef<{ sx: number; sy: number; ow: number; oh: number; ox: number; oy: number; edge: string } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const px = win.position.x, py = win.position.y;
-  const pw = win.size.width, ph = win.size.height;
-  const isMaximized = win.state === 'maximized';
-  const isMinimized = win.state === 'minimized';
+  const isMax = win.state === 'maximized';
+  const isMin = win.state === 'minimized';
 
-  const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!dragState.current) return;
-    const dx = e.clientX - dragState.current.sx;
-    const dy = e.clientY - dragState.current.sy;
-    const nx = Math.max(0, dragState.current.ox + dx);
-    const ny = Math.max(28, dragState.current.oy + dy);
-    if (e.clientX < 8) setSnapGhost('left');
-    else if (e.clientX > window.innerWidth - 8) setSnapGhost('right');
-    else if (e.clientY < 32) setSnapGhost('max');
-    else setSnapGhost(null);
-    moveWindow(win.id, { x: nx, y: ny });
-  }, [win.id, moveWindow]);
+  const handleFocus = useCallback(() => { if (!win.isFocused) focusWindow(win.id); }, [win.id, win.isFocused, focusWindow]);
 
-  const handleDragUp = useCallback((e: MouseEvent) => {
-    document.removeEventListener('mousemove', handleDragMove);
-    document.removeEventListener('mouseup', handleDragUp);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    setSnapGhost(null);
-    dragState.current = null;
-    // Snap zones
-    if (e.clientX < 8 || e.clientX > window.innerWidth - 8 || e.clientY < 34) {
-      maximizeWindow(win.id);
-    }
-  }, [win.id, maximizeWindow, handleDragMove]);
-
-  const onTitleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 0 || isMaximized) return;
-    e.preventDefault();
-    focusWindow(win.id);
-    dragState.current = { sx: e.clientX, sy: e.clientY, ox: px, oy: py };
-    document.body.style.cursor = 'grabbing';
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('mouseup', handleDragUp);
-  }, [win.id, px, py, isMaximized, focusWindow, handleDragMove, handleDragUp]);
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!resizeState.current) return;
-    const { dir, sx, sy, ox, oy, ow, oh } = resizeState.current;
-    const dx = e.clientX - sx, dy = e.clientY - sy;
-    let nx = ox, ny = oy, nw = ow, nh = oh;
-    if (dir.includes('e')) nw = Math.max(MIN_W, ow + dx);
-    if (dir.includes('s')) nh = Math.max(MIN_H, oh + dy);
-    if (dir.includes('w')) { nw = Math.max(MIN_W, ow - dx); nx = ox + ow - nw; }
-    if (dir.includes('n')) { nh = Math.max(MIN_H, oh - dy); ny = oy + oh - nh; }
-    moveWindow(win.id, { x: nx, y: ny });
-    resizeWindow(win.id, { width: nw, height: nh });
-  }, [win.id, moveWindow, resizeWindow]);
-
-  const handleResizeUp = useCallback(() => {
-    document.removeEventListener('mousemove', handleResizeMove);
-    document.removeEventListener('mouseup', handleResizeUp);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    resizeState.current = null;
-  }, [handleResizeMove]);
-
-  const startResize = useCallback((e: React.MouseEvent, dir: ResizeDir) => {
-    if (e.button !== 0 || isMaximized) return;
-    e.preventDefault(); e.stopPropagation();
-    focusWindow(win.id);
-    resizeState.current = { dir, sx: e.clientX, sy: e.clientY, ox: px, oy: py, ow: pw, oh: ph };
-    const cursors: Record<ResizeDir, string> = {
-      n:'ns-resize', s:'ns-resize', e:'ew-resize', w:'ew-resize',
-      ne:'ne-resize', nw:'nw-resize', se:'se-resize', sw:'sw-resize',
-    };
-    document.body.style.cursor = cursors[dir];
-    document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', handleResizeMove);
-    document.addEventListener('mouseup', handleResizeUp);
-  }, [win.id, px, py, pw, ph, isMaximized, focusWindow, handleResizeMove, handleResizeUp]);
-
-  useEffect(() => () => {
-    document.removeEventListener('mousemove', handleDragMove);
-    document.removeEventListener('mouseup', handleDragUp);
-    document.removeEventListener('mousemove', handleResizeMove);
-    document.removeEventListener('mouseup', handleResizeUp);
-  }, [handleDragMove, handleDragUp, handleResizeMove, handleResizeUp]);
-
-  if (isMinimized) return null;
-
-  const dk = theme.mode === 'dark';
-  const accent = theme.accent;
-
-  const frameStyle: React.CSSProperties = isMaximized
-    ? { position:'fixed', left:0, top:28, right:0, bottom:0, borderRadius:0, zIndex:win.zIndex }
-    : { position:'fixed', left:px, top:py, width:pw, height:ph, zIndex:win.zIndex,
-        borderRadius:14, minWidth:MIN_W, minHeight:MIN_H };
-
-  const RH = ({ dir, cls }: { dir: ResizeDir; cls: string }) => {
-    const curs: Record<ResizeDir,string> = {
-      n:'ns-resize', s:'ns-resize', e:'ew-resize', w:'ew-resize',
-      ne:'ne-resize', nw:'nw-resize', se:'se-resize', sw:'sw-resize',
-    };
-    return (
-      <div className={`absolute z-10 ${cls}`}
-        style={{ cursor: curs[dir] }}
-        onMouseDown={e => startResize(e, dir)} />
-    );
+  const getEdge = (e: React.MouseEvent<HTMLDivElement>): string => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    let edge = '';
+    if (y < RESIZE_HANDLE) edge += 'n';
+    if (y > r.height - RESIZE_HANDLE) edge += 's';
+    if (x < RESIZE_HANDLE) edge += 'w';
+    if (x > r.width - RESIZE_HANDLE) edge += 'e';
+    return edge;
   };
 
+  const getCursor = (e: React.MouseEvent<HTMLDivElement>): string => {
+    if (isMax) return 'default';
+    const m: Record<string, string> = { n: 'n-resize', s: 's-resize', e: 'e-resize', w: 'w-resize', nw: 'nw-resize', ne: 'ne-resize', sw: 'sw-resize', se: 'se-resize' };
+    return m[getEdge(e)] || 'default';
+  };
+
+  // Global mouse handlers
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (drag.current) {
+        const dx = e.clientX - drag.current.sx, dy = e.clientY - drag.current.sy;
+        const vw = window.innerWidth;
+        let nx = drag.current.ox + dx, ny = drag.current.oy + dy;
+        ny = Math.max(TOP_PANEL_H, ny);
+        nx = Math.min(Math.max(nx, -(win.size.width - 100)), vw - 100);
+        moveWindow(win.id, { x: nx, y: ny });
+      } else if (resize.current) {
+        const r = resize.current;
+        const dx = e.clientX - r.sx, dy = e.clientY - r.sy;
+        let nw = r.ow, nh = r.oh, nx = r.ox, ny = r.oy;
+        if (r.edge.includes('e')) nw = Math.max(320, r.ow + dx);
+        if (r.edge.includes('s')) nh = Math.max(200, r.oh + dy);
+        if (r.edge.includes('w')) { nw = Math.max(320, r.ow - dx); nx = r.ox + (r.ow - nw); }
+        if (r.edge.includes('n')) { nh = Math.max(200, r.oh - dy); ny = Math.max(TOP_PANEL_H, r.oy + (r.oh - nh)); }
+        moveWindow(win.id, { x: nx, y: ny });
+        resizeWindow(win.id, { width: nw, height: nh });
+      }
+    };
+    const up = () => { drag.current = null; resize.current = null; setIsDragging(false); };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    return () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+  }, [win.id, win.size, moveWindow, resizeWindow]);
+
+  const handleTitleMouseDown = (e: React.MouseEvent) => {
+    if (isMax) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    drag.current = { sx: e.clientX, sy: e.clientY, ox: win.position.x, oy: win.position.y };
+    setIsDragging(true);
+    focusWindow(win.id);
+  };
+
+  const handleTitleDblClick = () => {
+    if (isMax) restoreWindow(win.id); else maximizeWindow(win.id);
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isMax) return;
+    const edge = getEdge(e);
+    if (!edge) return;
+    e.preventDefault();
+    e.stopPropagation();
+    resize.current = { sx: e.clientX, sy: e.clientY, ow: win.size.width, oh: win.size.height, ox: win.position.x, oy: win.position.y, edge };
+  };
+
+  if (isMin) return null;
+
+  const style: React.CSSProperties = isMax
+    ? { position: 'fixed', left: 0, top: TOP_PANEL_H, right: 0, bottom: 0, zIndex: win.zIndex }
+    : {
+        position: 'fixed',
+        left: win.position.x,
+        top: win.position.y,
+        width: win.size.width,
+        height: win.size.height,
+        zIndex: win.zIndex,
+      };
+
   return (
-    <>
-      {snapGhost && (
-        <div className="fixed z-[5000] pointer-events-none"
-          style={{
-            top: 28, bottom: 0,
-            left: snapGhost === 'right' ? '50%' : 0,
-            width: snapGhost === 'max' ? '100%' : '50%',
-            background: `${accent}14`,
-            border: `2px solid ${accent}45`,
-            borderRadius: 12, backdropFilter: 'blur(4px)',
-          }} />
-      )}
+    <div
+      ref={frameRef}
+      className={`window-frame ${win.isFocused ? 'focused' : ''} flex flex-col overflow-hidden rounded-xl`}
+      style={{
+        ...style,
+        background: theme.mode === 'dark' ? 'rgba(20,20,32,0.97)' : 'rgba(248,248,250,0.97)',
+        border: win.isFocused ? `1px solid ${theme.accent}40` : '1px solid rgba(255,255,255,0.06)',
+        cursor: isDragging ? 'grabbing' : 'default',
+        animation: 'windowOpen 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+      }}
+      onMouseDown={handleFocus}
+    >
+      {/* Resize overlay */}
+      <div
+        className="absolute inset-0 z-20 pointer-events-none"
+        style={{ cursor: 'default' }}
+        onMouseDown={handleResizeMouseDown}
+        onMouseMove={(e) => { if (frameRef.current) frameRef.current.style.cursor = getCursor(e); }}
+        onMouseLeave={() => { if (frameRef.current) frameRef.current.style.cursor = 'default'; }}
+      />
 
-      <div ref={frameRef}
-        className="flex flex-col overflow-hidden"
+      {/* Title bar */}
+      <div
+        className="flex items-center px-3 gap-2 flex-shrink-0 z-10 relative"
         style={{
-          ...frameStyle,
-          background: dk ? 'rgba(10,10,22,0.97)' : 'rgba(248,248,255,0.97)',
-          border: win.isFocused
-            ? `1px solid ${accent}42` : `1px solid ${dk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)'}`,
-          boxShadow: win.isFocused
-            ? `0 28px 80px rgba(0,0,0,0.7), 0 0 0 1px ${accent}10`
-            : `0 12px 40px rgba(0,0,0,0.40)`,
-          transition: 'box-shadow 0.15s, border-color 0.15s',
-          animation: 'windowIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+          height: 36,
+          background: win.isFocused
+            ? theme.mode === 'dark' ? 'rgba(30,30,45,0.95)' : 'rgba(230,230,240,0.95)'
+            : theme.mode === 'dark' ? 'rgba(22,22,35,0.9)' : 'rgba(220,220,230,0.9)',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          cursor: isMax ? 'default' : 'grab',
+          userSelect: 'none',
         }}
-        onMouseDown={() => focusWindow(win.id)}>
-
-        {!isMaximized && (
-          <>
-            <RH dir="n"  cls="top-0 left-4 right-4 h-2" />
-            <RH dir="s"  cls="bottom-0 left-4 right-4 h-2" />
-            <RH dir="e"  cls="right-0 top-4 bottom-4 w-2" />
-            <RH dir="w"  cls="left-0 top-4 bottom-4 w-2" />
-            <RH dir="ne" cls="top-0 right-0 w-4 h-4" />
-            <RH dir="nw" cls="top-0 left-0 w-4 h-4" />
-            <RH dir="se" cls="bottom-0 right-0 w-4 h-4" />
-            <RH dir="sw" cls="bottom-0 left-0 w-4 h-4" />
-          </>
-        )}
-
-        {/* Title bar */}
-        <div
-          className="flex items-center px-3 flex-shrink-0"
-          style={{
-            height: 38,
-            background: dk
-              ? 'linear-gradient(180deg,rgba(20,20,38,0.99) 0%,rgba(12,12,24,0.99) 100%)'
-              : 'linear-gradient(180deg,rgba(248,248,255,0.99) 0%,rgba(235,235,250,0.99) 100%)',
-            borderBottom: `1px solid ${dk ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-            cursor: isMaximized ? 'default' : 'grab',
-          }}
-          onMouseDown={onTitleMouseDown}
-          onDoubleClick={() => maximizeWindow(win.id)}
-        >
-          {/* Traffic lights */}
-          <div className="flex items-center gap-1.5 flex-shrink-0 group" onMouseDown={e => e.stopPropagation()}>
-            <button onClick={() => closeWindow(win.id)}
-              className="w-3 h-3 rounded-full flex items-center justify-center transition-all"
-              style={{ background:'#ff5f57', boxShadow:'0 1px 2px rgba(0,0,0,0.3)' }} title="Close">
-              <X size={7} className="opacity-0 group-hover:opacity-100 text-red-900" strokeWidth={2.5} />
-            </button>
-            <button onClick={() => minimizeWindow(win.id)}
-              className="w-3 h-3 rounded-full flex items-center justify-center transition-all"
-              style={{ background:'#febc2e', boxShadow:'0 1px 2px rgba(0,0,0,0.3)' }} title="Minimize">
-              <Minus size={7} className="opacity-0 group-hover:opacity-100 text-yellow-900" strokeWidth={2.5} />
-            </button>
-            <button onClick={() => maximizeWindow(win.id)}
-              className="w-3 h-3 rounded-full flex items-center justify-center transition-all"
-              style={{ background:'#28c840', boxShadow:'0 1px 2px rgba(0,0,0,0.3)' }} title={isMaximized ? 'Restore' : 'Maximize'}>
-              {isMaximized
-                ? <ChevronUp size={7} className="opacity-0 group-hover:opacity-100 text-green-900" strokeWidth={2.5} />
-                : <Square size={6} className="opacity-0 group-hover:opacity-100 text-green-900" strokeWidth={2.5} />}
-            </button>
-          </div>
-
-          {/* Title */}
-          <div className="flex-1 text-center pointer-events-none">
-            <span className="text-[11px] font-semibold" style={{ opacity: win.isFocused ? 0.85 : 0.4 }}>
-              {win.title}
-            </span>
-          </div>
-
-          <div className="w-[54px] flex-shrink-0" />
+        onMouseDown={handleTitleMouseDown}
+        onDoubleClick={handleTitleDblClick}
+      >
+        {/* Traffic lights */}
+        <div className="flex gap-1.5 flex-shrink-0 group/tl">
+          <button
+            className="traffic-btn relative flex items-center justify-center"
+            style={{ background: '#FF5F57', width: 13, height: 13 }}
+            onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
+            title="Close">
+            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 8, lineHeight: 1 }}>✕</span>
+          </button>
+          <button
+            className="traffic-btn relative flex items-center justify-center"
+            style={{ background: '#FFBD2E', width: 13, height: 13 }}
+            onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
+            title="Minimize">
+            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 9, lineHeight: 1 }}>−</span>
+          </button>
+          <button
+            className="traffic-btn relative flex items-center justify-center"
+            style={{ background: '#28C840', width: 13, height: 13 }}
+            onClick={(e) => { e.stopPropagation(); isMax ? restoreWindow(win.id) : maximizeWindow(win.id); }}
+            title={isMax ? 'Restore' : 'Maximize'}>
+            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 8, lineHeight: 1 }}>{isMax ? '⊡' : '⊞'}</span>
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden relative" style={{ pointerEvents: 'auto' }}>
-          {children}
+        {/* Window title */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-center">
+          <DynIcon name={win.icon} size={13} style={{ color: theme.accent, flexShrink: 0 }} />
+          <span
+            className="text-xs font-medium truncate"
+            style={{ color: theme.mode === 'dark' ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.75)' }}
+          >
+            {win.title}
+          </span>
+        </div>
+
+        {/* Right area: window controls */}
+        <div className="w-14 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={e => { e.stopPropagation(); minimizeWindow(win.id); }} className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors" title="Minimize">
+            <Icons.Minus size={10} />
+          </button>
+          <button onClick={e => { e.stopPropagation(); isMax ? restoreWindow(win.id) : maximizeWindow(win.id); }} className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors" title={isMax ? 'Restore' : 'Maximize'}>
+            {isMax ? <Icons.Minimize2 size={10} /> : <Icons.Maximize2 size={10} />}
+          </button>
         </div>
       </div>
-    </>
+
+      {/* App content */}
+      <div className="flex-1 overflow-hidden app-content relative z-0">
+        {children}
+      </div>
+    </div>
   );
 });

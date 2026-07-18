@@ -7,7 +7,7 @@ import { generateId } from '@/lib/utils';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay,
   isSameMonth, isToday, addMonths, subMonths, getDay, addWeeks, subWeeks,
-  startOfWeek, endOfWeek, addDays, isSameWeek, parseISO, addDays as addDaysDate,
+  startOfWeek, addDays,
 } from 'date-fns';
 
 const EVENT_COLORS = ['#7C4DFF','#2196F3','#4CAF50','#FF6D00','#E91E63','#F44336','#00BCD4','#FFC107'];

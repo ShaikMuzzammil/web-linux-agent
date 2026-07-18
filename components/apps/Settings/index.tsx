@@ -1,160 +1,120 @@
-"use client";
-import { useState } from "react";
-import { useDesktopStore } from "@/store/desktopStore";
-import { useSession, signOut } from "next-auth/react";
+'use client';
+import { useState, useCallback } from 'react';
+import { Palette, Monitor, Bell, User, Zap, Layout, Shield, Info, Sun, Moon, Check, LogOut, ChevronRight } from 'lucide-react';
+import { useOSStore } from '@/hooks/useOSStore';
+import { signOut } from 'next-auth/react';
+import { APP_REGISTRY } from '@/components/apps/registry';
 
-type SettingsSection = "appearance" | "account" | "display" | "sound" | "network" | "about";
-
-const SECTIONS: { id: SettingsSection; label: string; icon: string }[] = [
-  { id: "appearance", label: "Appearance", icon: "🎨" },
-  { id: "display", label: "Display", icon: "🖥️" },
-  { id: "sound", label: "Sound", icon: "🔊" },
-  { id: "network", label: "Network", icon: "📶" },
-  { id: "account", label: "Users & Account", icon: "👤" },
-  { id: "about", label: "About", icon: "ℹ️" },
+const ACCENT_COLORS = [
+  { name: 'Purple', value: '#7C4DFF' }, { name: 'Blue', value: '#2196F3' },
+  { name: 'Cyan', value: '#00BCD4' }, { name: 'Green', value: '#4CAF50' },
+  { name: 'Orange', value: '#FF6D00' }, { name: 'Pink', value: '#E91E63' },
+  { name: 'Red', value: '#F44336' }, { name: 'Yellow', value: '#FFC107' },
 ];
 
 const WALLPAPERS = [
-  { id: "warty-final-ubuntu", label: "Ubuntu Classic", gradient: "linear-gradient(135deg, #2C001E, #5C0036, #3a1a4a, #1a1a3a)" },
-  { id: "aurora", label: "Aurora", gradient: "linear-gradient(135deg, #0d1b2a, #1b4332, #0d1b2a)" },
-  { id: "mountains", label: "Mountains", gradient: "linear-gradient(180deg, #1a1a3e, #2d1b4e, #4a2c6b, #1a1a1a)" },
-  { id: "neon-city", label: "Neon City", gradient: "linear-gradient(180deg, #0a0a1a, #1a0a2e, #2e1a4a, #0a1a0a)" },
-  { id: "ocean", label: "Ocean", gradient: "linear-gradient(180deg, #0c1445, #1a237e, #283593, #1565c0)" },
-  { id: "forest", label: "Forest", gradient: "linear-gradient(135deg, #1b4332, #2d6a4f, #40916c, #1b4332)" },
+  { name: 'Ubuntu Dark', path: '/wallpapers/ubuntu-dark.svg', preview: 'linear-gradient(135deg, #1a0a05 0%, #080506 100%)' },
+  { name: 'Default', path: '/wallpapers/default.svg', preview: 'linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 50%, #0d1a2e 100%)' },
+  { name: 'Aurora', path: '/wallpapers/aurora.svg', preview: 'linear-gradient(135deg, #0a0a1a 0%, #0a3320 50%, #1a0a2e 100%)' },
+  { name: 'Nebula', path: '/wallpapers/nebula.svg', preview: 'linear-gradient(135deg, #0d0520 0%, #000d30 50%, #100520 100%)' },
+  { name: 'Cyberpunk', path: '/wallpapers/cyberpunk.svg', preview: 'linear-gradient(135deg, #0a0008 0%, #1a0520 50%, #2a0510 100%)' },
+  { name: 'Mountain', path: '/wallpapers/mountain.svg', preview: 'linear-gradient(135deg, #0a0818 0%, #1a0e2e 50%, #2d1520 100%)' },
+  { name: 'Ocean', path: '/wallpapers/ocean.svg', preview: 'linear-gradient(135deg, #020d18 0%, #041520 50%, #021018 100%)' },
 ];
 
-const ACCENT_COLORS = [
-  { name: "Ubuntu Orange", value: "#E95420" },
-  { name: "Purple", value: "#772953" },
-  { name: "Blue", value: "#3d8af7" },
-  { name: "Green", value: "#4CAF50" },
-  { name: "Teal", value: "#009688" },
-  { name: "Pink", value: "#E91E63" },
-  { name: "Amber", value: "#FFC107" },
-  { name: "Cyan", value: "#00BCD4" },
+type Section = 'appearance' | 'wallpaper' | 'dock' | 'notifications' | 'account' | 'about';
+
+const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
+  { id: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
+  { id: 'wallpaper', label: 'Wallpaper', icon: <Monitor size={15} /> },
+  { id: 'dock', label: 'Dock & Apps', icon: <Layout size={15} /> },
+  { id: 'notifications', label: 'Notifications', icon: <Bell size={15} /> },
+  { id: 'account', label: 'Account', icon: <User size={15} /> },
+  { id: 'about', label: 'About', icon: <Info size={15} /> },
 ];
 
 export default function Settings({ windowId }: { windowId: string }) {
-  const [active, setActive] = useState<SettingsSection>("appearance");
-  const {
-    wallpaper, setWallpaper,
-    accentColor, setAccentColor,
-    fontSize, setFontSize,
-    dockSize, setDockSize,
-    volume, setVolume,
-    brightness, setBrightness,
-    terminalTheme, setTerminalTheme,
-  } = useDesktopStore();
-  const { data: session } = useSession();
+  const { theme, setTheme, toggleTheme, auth, dockItems, pinDockItem, unpinDockItem, logout } = useOSStore();
+  const [section, setSection] = useState<Section>('appearance');
+
+  const handleSignOut = useCallback(async () => {
+    if (!auth.isGuest) await signOut({ redirect: false });
+    logout();
+  }, [auth.isGuest, logout]);
+
+  const bg = theme.mode === 'dark' ? '#0d0d1a' : '#f5f5fb';
+  const text = theme.mode === 'dark' ? '#e2e8f0' : '#1e1e2e';
+  const cardBg = theme.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+  const border = theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
 
   return (
-    <div className="h-full flex overflow-hidden" style={{ background: "#1a1a2e", color: "#e6edf3" }}>
+    <div className="flex h-full text-sm" style={{ background: bg, color: text }}>
       {/* Sidebar */}
-      <div className="w-48 flex-shrink-0 border-r border-white/10 overflow-y-auto"
-        style={{ background: "rgba(0,0,0,0.2)" }}>
-        <div className="p-4">
-          <div className="text-sm font-semibold text-white mb-1">Settings</div>
-          <div className="text-xs text-white/40">System configuration</div>
-        </div>
-        <div className="px-2 pb-4 space-y-0.5">
-          {SECTIONS.map((s) => (
-            <button key={s.id} onClick={() => setActive(s.id)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors"
-              style={{
-                background: active === s.id ? "rgba(233,84,32,0.15)" : "transparent",
-                color: active === s.id ? "#E95420" : "rgba(255,255,255,0.65)",
-                borderLeft: active === s.id ? "2px solid #E95420" : "2px solid transparent",
-              }}>
-              <span>{s.icon}</span>
-              {s.label}
-            </button>
-          ))}
-        </div>
+      <div className="w-48 flex-shrink-0 flex flex-col border-r p-2" style={{ borderColor: border, background: theme.mode === 'dark' ? 'rgba(10,10,20,0.8)' : 'rgba(230,230,240,0.8)' }}>
+        <p className="text-xs font-bold px-2 py-2 opacity-50 uppercase tracking-wider">System Settings</p>
+        {SECTIONS.map((s) => (
+          <button key={s.id} onClick={() => setSection(s.id)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs font-medium transition-all"
+            style={{
+              background: section === s.id ? `${theme.accent}25` : 'transparent',
+              color: section === s.id ? theme.accent : 'inherit',
+            }}
+          >
+            {s.icon}{s.label}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {active === "appearance" && (
-          <div className="space-y-8 max-w-xl">
-            <div>
-              <h2 className="text-lg font-semibold text-white mb-4">Appearance</h2>
+      <div className="flex-1 overflow-y-auto p-5">
+        {/* ── Appearance ── */}
+        {section === 'appearance' && (
+          <div className="space-y-5">
+            <h2 className="text-base font-bold">Appearance</h2>
 
-              {/* Wallpaper */}
-              <div className="mb-6">
-                <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Wallpaper</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {WALLPAPERS.map((w) => (
-                    <div key={w.id} onClick={() => setWallpaper(w.id)}
-                      className="cursor-pointer rounded-xl overflow-hidden transition-all hover:scale-[1.02]"
-                      style={{
-                        height: 64,
-                        background: w.gradient,
-                        border: wallpaper === w.id ? `2px solid ${accentColor}` : "2px solid rgba(255,255,255,0.1)",
-                        boxShadow: wallpaper === w.id ? `0 0 12px ${accentColor}50` : "none",
-                      }}>
-                      <div className="h-full flex items-end p-1.5">
-                        <span className="text-white text-xs bg-black/50 px-1.5 py-0.5 rounded">{w.label}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Accent color */}
-              <div className="mb-6">
-                <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Accent Color</h3>
-                <div className="flex flex-wrap gap-3">
-                  {ACCENT_COLORS.map((c) => (
-                    <button key={c.value} onClick={() => setAccentColor(c.value)}
-                      className="w-8 h-8 rounded-full transition-all hover:scale-110"
-                      title={c.name}
-                      style={{
-                        background: c.value,
-                        boxShadow: accentColor === c.value ? `0 0 0 3px rgba(255,255,255,0.3), 0 0 0 5px ${c.value}` : "none",
-                        transform: accentColor === c.value ? "scale(1.15)" : "scale(1)",
-                      }} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Dock size */}
-              <div className="mb-6">
-                <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Dock Icon Size</h3>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-white/40">Small</span>
-                  <input type="range" min="32" max="64" step="4" value={dockSize} onChange={(e) => setDockSize(Number(e.target.value))}
-                    className="flex-1 h-1.5 rounded-full cursor-pointer accent-orange-500" />
-                  <span className="text-xs text-white/40">Large</span>
-                  <span className="w-8 text-white/60 text-sm">{dockSize}px</span>
-                </div>
-              </div>
-
-              {/* Font size */}
-              <div>
-                <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Interface Font Size</h3>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-white/40">A</span>
-                  <input type="range" min="11" max="18" step="1" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}
-                    className="flex-1 h-1.5 rounded-full cursor-pointer accent-orange-500" />
-                  <span className="text-lg text-white/40">A</span>
-                  <span className="w-8 text-white/60 text-sm">{fontSize}px</span>
-                </div>
+            {/* Theme mode */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-semibold mb-3 opacity-70">Theme Mode</p>
+              <div className="flex gap-3">
+                {[{ mode: 'dark', icon: <Moon size={18} />, label: 'Dark' }, { mode: 'light', icon: <Sun size={18} />, label: 'Light' }].map((m) => (
+                  <button key={m.mode} onClick={() => setTheme({ mode: m.mode as 'dark' | 'light' })}
+                    className="flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all"
+                    style={{ background: theme.mode === m.mode ? `${theme.accent}20` : 'transparent', borderColor: theme.mode === m.mode ? theme.accent : border, color: theme.mode === m.mode ? theme.accent : 'inherit' }}>
+                    {m.icon}<span className="text-xs">{m.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Terminal theme */}
-            <div>
-              <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Terminal Theme</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {["ubuntu", "dark", "matrix", "dracula", "solarized", "nord"].map((t) => (
-                  <button key={t} onClick={() => setTerminalTheme(t)}
-                    className="py-2 px-3 rounded-lg text-sm capitalize transition-all"
-                    style={{
-                      background: terminalTheme === t ? "rgba(233,84,32,0.2)" : "rgba(255,255,255,0.06)",
-                      border: terminalTheme === t ? `1px solid ${accentColor}` : "1px solid rgba(255,255,255,0.1)",
-                      color: terminalTheme === t ? accentColor : "rgba(255,255,255,0.6)",
-                    }}>
-                    {t}
+            {/* Accent color */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-semibold mb-3 opacity-70">Accent Color</p>
+              <div className="flex flex-wrap gap-2">
+                {ACCENT_COLORS.map((c) => (
+                  <button key={c.value} onClick={() => setTheme({ accent: c.value })}
+                    className="relative w-8 h-8 rounded-full transition-all"
+                    style={{ background: c.value, border: theme.accent === c.value ? '2px solid white' : '2px solid transparent', transform: theme.accent === c.value ? 'scale(1.15)' : 'scale(1)' }}
+                    title={c.name}
+                  >
+                    {theme.accent === c.value && <Check size={14} className="absolute inset-0 m-auto text-white" />}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-xs opacity-50">Custom:</span>
+                <input type="color" value={theme.accent} onChange={(e) => setTheme({ accent: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-none" style={{ background: 'transparent' }} />
+                <span className="text-xs font-mono opacity-50">{theme.accent}</span>
+              </div>
+            </div>
+
+            {/* Font size */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-semibold mb-3 opacity-70">Font Size</p>
+              <div className="flex gap-2">
+                {['Small', 'Medium', 'Large'].map((s) => (
+                  <button key={s} className="flex-1 py-1.5 rounded-lg text-xs border transition-all"
+                    style={{ background: s === 'Medium' ? `${theme.accent}20` : 'transparent', borderColor: s === 'Medium' ? theme.accent : border }}>
+                    {s}
                   </button>
                 ))}
               </div>
@@ -162,137 +122,99 @@ export default function Settings({ windowId }: { windowId: string }) {
           </div>
         )}
 
-        {active === "display" && (
-          <div className="space-y-6 max-w-xl">
-            <h2 className="text-lg font-semibold text-white mb-4">Display</h2>
-            <div>
-              <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Brightness</h3>
-              <div className="flex items-center gap-4">
-                <span className="text-xl">🌑</span>
-                <input type="range" min="10" max="100" value={brightness} onChange={(e) => setBrightness(Number(e.target.value))}
-                  className="flex-1 h-1.5 rounded-full cursor-pointer accent-orange-500" />
-                <span className="text-xl">☀️</span>
-                <span className="w-12 text-white/60 text-sm">{brightness}%</span>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="text-white font-medium mb-2">Resolution</div>
-              <div className="text-white/50 text-sm">1920 × 1080 (Full HD)</div>
-            </div>
-            <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="text-white font-medium mb-2">Refresh Rate</div>
-              <div className="text-white/50 text-sm">60 Hz</div>
-            </div>
-          </div>
-        )}
-
-        {active === "sound" && (
-          <div className="space-y-6 max-w-xl">
-            <h2 className="text-lg font-semibold text-white mb-4">Sound</h2>
-            <div>
-              <h3 className="text-sm text-white/50 uppercase tracking-widest mb-3">Output Volume</h3>
-              <div className="flex items-center gap-4">
-                <span className="text-xl">🔈</span>
-                <input type="range" min="0" max="100" value={volume} onChange={(e) => setVolume(Number(e.target.value))}
-                  className="flex-1 h-1.5 rounded-full cursor-pointer accent-orange-500" />
-                <span className="text-xl">🔊</span>
-                <span className="w-12 text-white/60 text-sm">{volume}%</span>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="text-white font-medium mb-1">Output Device</div>
-              <div className="text-white/50 text-sm">Built-in Speakers</div>
-            </div>
-            <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="text-white font-medium mb-1">Input Device</div>
-              <div className="text-white/50 text-sm">Built-in Microphone</div>
-            </div>
-          </div>
-        )}
-
-        {active === "network" && (
-          <div className="space-y-4 max-w-xl">
-            <h2 className="text-lg font-semibold text-white mb-4">Network</h2>
-            <div className="flex items-center justify-between p-4 rounded-xl"
-              style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)" }}>
-              <div className="flex items-center gap-3">
-                <span className="text-xl">📶</span>
-                <div>
-                  <div className="text-white font-medium text-sm">Wi-Fi Connected</div>
-                  <div className="text-white/50 text-xs">Portfolio Network · Secured</div>
-                </div>
-              </div>
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            </div>
-            <div className="p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="text-white/50 text-xs uppercase tracking-wide mb-2">Connection Details</div>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-white/50">IP Address</span><span className="text-white/80">192.168.1.42</span></div>
-                <div className="flex justify-between"><span className="text-white/50">DNS</span><span className="text-white/80">8.8.8.8</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Gateway</span><span className="text-white/80">192.168.1.1</span></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {active === "account" && (
-          <div className="space-y-4 max-w-xl">
-            <h2 className="text-lg font-semibold text-white mb-4">Users & Account</h2>
-            {session ? (
-              <>
-                <div className="p-5 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white"
-                      style={{ background: "linear-gradient(135deg, #E95420, #772953)" }}>
-                      {session.user?.name?.[0]?.toUpperCase() || "U"}
-                    </div>
-                    <div>
-                      <div className="text-white font-semibold text-lg">{session.user?.name}</div>
-                      <div className="text-white/50 text-sm">{session.user?.email}</div>
-                      <div className="text-green-400 text-xs mt-1">● Signed in</div>
-                    </div>
+        {/* ── Wallpaper ── */}
+        {section === 'wallpaper' && (
+          <div className="space-y-5">
+            <h2 className="text-base font-bold">Wallpaper</h2>
+            <div className="grid grid-cols-3 gap-3">
+              {WALLPAPERS.map((w) => (
+                <button key={w.path} onClick={() => setTheme({ wallpaper: w.path })}
+                  className="relative flex flex-col items-center gap-2 group">
+                  <div className="w-full aspect-video rounded-xl overflow-hidden transition-all"
+                    style={{ background: w.preview, border: theme.wallpaper === w.path ? `2px solid ${theme.accent}` : '2px solid transparent' }}>
+                    {theme.wallpaper === w.path && <div className="absolute inset-0 flex items-center justify-center"><Check size={20} className="text-white drop-shadow-lg" /></div>}
                   </div>
-                </div>
-                <button onClick={() => signOut()}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium text-red-400 transition-all hover:bg-red-500/10"
-                  style={{ border: "1px solid rgba(239,68,68,0.3)" }}>
-                  🚪 Sign Out
+                  <span className="text-xs opacity-60">{w.name}</span>
                 </button>
-              </>
-            ) : (
-              <div className="p-5 rounded-xl text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="text-4xl mb-3">👤</div>
-                <div className="text-white font-medium mb-1">Guest Mode</div>
-                <div className="text-white/50 text-sm mb-4">Sign in to save your preferences and access all features.</div>
+              ))}
+            </div>
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-semibold mb-2 opacity-70">Custom URL</p>
+              <div className="flex gap-2">
+                <input placeholder="https://example.com/wallpaper.jpg" className="flex-1 px-3 py-1.5 rounded-lg text-xs outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${border}`, caretColor: theme.accent }} onKeyDown={(e) => { if (e.key === 'Enter') setTheme({ wallpaper: (e.target as HTMLInputElement).value }); }} />
+                <button className="px-3 py-1.5 rounded-lg text-xs text-white" style={{ background: theme.accent }}>Set</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Dock ── */}
+        {section === 'dock' && (
+          <div className="space-y-5">
+            <h2 className="text-base font-bold">Dock & Apps</h2>
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-semibold mb-3 opacity-70">Pinned Apps</p>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {APP_REGISTRY.map((app) => {
+                  const isPinned = dockItems.find((d) => d.appId === app.id)?.isPinned;
+                  return (
+                    <div key={app.id} className="flex items-center gap-3 p-2 rounded-lg"
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                      <span className="text-xs flex-1">{app.name}</span>
+                      <span className="text-[10px] opacity-40">{app.category}</span>
+                      <button onClick={() => isPinned ? unpinDockItem(app.id) : pinDockItem(app.id)}
+                        className="px-2 py-0.5 rounded text-[10px] font-medium transition-all"
+                        style={{ background: isPinned ? `${theme.accent}30` : 'rgba(255,255,255,0.06)', color: isPinned ? theme.accent : 'inherit' }}>
+                        {isPinned ? 'Pinned' : 'Pin'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Account ── */}
+        {section === 'account' && (
+          <div className="space-y-5">
+            <h2 className="text-base font-bold">Account</h2>
+            <div className="p-5 rounded-xl flex items-center gap-4" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl font-bold text-white" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}80)` }}>
+                {auth.userImage ? <img src={auth.userImage} alt="" className="w-full h-full rounded-full" /> : auth.userName[0]?.toUpperCase() || 'G'}
+              </div>
+              <div>
+                <p className="font-semibold">{auth.isGuest ? 'Guest User' : auth.userName}</p>
+                <p className="text-xs opacity-50">{auth.userEmail || 'No email — cloud sync disabled'}</p>
+                <p className="text-xs mt-1" style={{ color: auth.isAuthenticated && !auth.isGuest ? '#4ade80' : '#f59e0b' }}>
+                  {auth.isAuthenticated && !auth.isGuest ? '✓ Synced to cloud' : '⚠ Local storage only'}
+                </p>
+              </div>
+            </div>
+
+            {auth.isGuest && (
+              <div className="p-4 rounded-xl border" style={{ background: `${theme.accent}10`, borderColor: `${theme.accent}30` }}>
+                <p className="text-sm font-semibold" style={{ color: theme.accent }}>Sign in for cloud sync</p>
+                <p className="text-xs opacity-60 mt-1">Create an account to sync all your files, notes, tasks, and settings across all devices.</p>
               </div>
             )}
+
+            <button onClick={handleSignOut} className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-400 border border-red-400/20 hover:bg-red-400/10 transition-colors text-sm">
+              <LogOut size={14} />Sign Out
+            </button>
           </div>
         )}
 
-        {active === "about" && (
-          <div className="space-y-4 max-w-xl">
-            <h2 className="text-lg font-semibold text-white mb-4">About This System</h2>
-            <div className="p-5 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="text-5xl">🐧</div>
-                <div>
-                  <div className="text-white font-bold text-lg">Web Linux Agent</div>
-                  <div className="text-white/50 text-sm">Version 2.0.0</div>
-                </div>
-              </div>
-              {[
-                ["OS", "Ubuntu 22.04.3 LTS (Simulated)"],
-                ["Built by", "Shaik Muzzammil"],
-                ["Framework", "Next.js 14 (App Router)"],
-                ["Database", "Neon PostgreSQL via Prisma"],
-                ["Auth", "NextAuth.js v5"],
-                ["Email", "Resend API"],
-                ["Hosting", "Vercel"],
-                ["GitHub", "github.com/ShaikMuzzammil"],
-              ].map(([key, val]) => (
-                <div key={key} className="flex justify-between py-2 border-b border-white/5 text-sm last:border-0">
-                  <span className="text-white/50">{key}</span>
-                  <span className="text-white/80">{val}</span>
+        {/* ── About ── */}
+        {section === 'about' && (
+          <div className="space-y-5">
+            <h2 className="text-base font-bold">About WebLinuxOS</h2>
+            <div className="p-5 rounded-xl space-y-3" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              {[['Version', 'WebLinuxOS 2.0.0'], ['Build', 'Next.js 14 + Neon DB'], ['Apps', '54 built-in apps'], ['Auth', 'NextAuth v4 (Email, GitHub, Google)'], ['Storage', 'Neon PostgreSQL + Local fallback'], ['Theme', 'Catppuccin-inspired dark/light'], ['Developer', 'WebLinuxOS Team']].map(([k, v]) => (
+                <div key={k} className="flex justify-between text-xs">
+                  <span className="opacity-50">{k}</span>
+                  <span className="font-medium">{v}</span>
                 </div>
               ))}
             </div>

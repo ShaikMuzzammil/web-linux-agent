@@ -1,7 +1,10 @@
 {
-  "buildCommand": "prisma db push --accept-data-loss && prisma generate && next build",
+  "buildCommand": "prisma generate && prisma db push --accept-data-loss && next build",
   "framework": "nextjs",
   "functions": {
-    "app/api/**/*.ts": { "maxDuration": 30 }
+    "app/api/auth/**/*.ts": { "maxDuration": 30 },
+    "app/api/sync/**/*.ts": { "maxDuration": 30 },
+    "app/api/user/**/*.ts": { "maxDuration": 30 },
+    "app/api/contact/**/*.ts": { "maxDuration": 30 }
   }
 }

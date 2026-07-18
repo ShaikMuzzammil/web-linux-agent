@@ -1,246 +1,264 @@
-"use client";
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+'use client';
+import { useState, useCallback, useRef } from 'react';
+import { Folder, File, ArrowLeft, ArrowRight, ArrowUp, Home, Trash2, RefreshCw, Plus, FolderPlus, Search, Grid3x3, List, ChevronRight, MoreHorizontal, Upload, Download, Eye, Pencil, Copy, Scissors, X, Check } from 'lucide-react';
+import { useFileSystem } from '@/hooks/useFileSystem';
+import { useOSStore } from '@/hooks/useOSStore';
+import type { FileSystemNode } from '@/types';
+import { formatBytes } from '@/lib/utils';
+import { format } from 'date-fns';
 
-interface FSItem {
-  name: string;
-  type: "folder" | "file" | "image" | "code" | "doc";
-  size?: string;
-  modified?: string;
-  icon?: string;
-  children?: FSItem[];
-}
-
-const FS_TREE: Record<string, FSItem[]> = {
-  "/": [
-    { name: "Home", type: "folder", icon: "🏠", modified: "Jul 4, 2025" },
-    { name: "Desktop", type: "folder", icon: "🖥️", modified: "Today" },
-    { name: "Documents", type: "folder", icon: "📄", modified: "Today" },
-    { name: "Downloads", type: "folder", icon: "⬇️", modified: "Today" },
-    { name: "Pictures", type: "folder", icon: "🖼️", modified: "Jun 30" },
-    { name: "Videos", type: "folder", icon: "🎬", modified: "Jun 25" },
-    { name: "Music", type: "folder", icon: "🎵", modified: "Jun 20" },
-    { name: "Projects", type: "folder", icon: "💻", modified: "Today" },
-  ],
-  "/Home": [
-    { name: "readme.txt", type: "file", size: "1.2 KB", icon: "📄", modified: "Today" },
-    { name: "resume.pdf", type: "doc", size: "156 KB", icon: "📑", modified: "Jul 1" },
-    { name: ".bashrc", type: "file", size: "4 KB", icon: "📄", modified: "Jun 20" },
-    { name: ".profile", type: "file", size: "807 B", icon: "📄", modified: "Jun 20" },
-    { name: "Desktop", type: "folder", icon: "🖥️", modified: "Today" },
-    { name: "Documents", type: "folder", icon: "📄", modified: "Today" },
-    { name: "Downloads", type: "folder", icon: "⬇️", modified: "Today" },
-    { name: "Projects", type: "folder", icon: "💻", modified: "Today" },
-  ],
-  "/Home/Projects": [
-    { name: "web-linux-agent", type: "folder", icon: "💻", modified: "Today" },
-    { name: "cortexcart", type: "folder", icon: "🛒", modified: "Jul 2" },
-    { name: "smart-query-optimizer", type: "folder", icon: "🔍", modified: "Jun 28" },
-    { name: "omnipoll", type: "folder", icon: "📊", modified: "Jun 20" },
-    { name: "agrowave", type: "folder", icon: "🌾", modified: "Jun 15" },
-  ],
-  "/Home/Documents": [
-    { name: "Resume - Shaik Muzzammil.pdf", type: "doc", size: "156 KB", icon: "📑", modified: "Jul 1" },
-    { name: "Cover Letter.docx", type: "doc", size: "28 KB", icon: "📝", modified: "Jun 30" },
-    { name: "Amrita_Marksheet.pdf", type: "doc", size: "420 KB", icon: "📑", modified: "Jun 25" },
-    { name: "Notes.txt", type: "file", size: "3.4 KB", icon: "📄", modified: "Today" },
-  ],
-  "/Home/Downloads": [
-    { name: "ubuntu-22.04.3-desktop.iso", type: "file", size: "4.7 GB", icon: "💿", modified: "Jun 10" },
-    { name: "nodejs-v18.tar.gz", type: "file", size: "25 MB", icon: "📦", modified: "Jun 15" },
-    { name: "postgres-setup.sh", type: "code", size: "2 KB", icon: "📜", modified: "Jun 20" },
-  ],
-  "/Home/Pictures": [
-    { name: "wallpapers", type: "folder", icon: "🖼️", modified: "Jun 30" },
-    { name: "screenshots", type: "folder", icon: "📸", modified: "Today" },
-    { name: "profile.jpg", type: "image", size: "128 KB", icon: "🖼️", modified: "Jun 25" },
-  ],
-  "/Desktop": [
-    { name: "About Me.lnk", type: "file", icon: "👨‍💻", modified: "Today" },
-    { name: "Projects.lnk", type: "file", icon: "💻", modified: "Today" },
-  ],
-};
-
-const BOOKMARKS = [
-  { label: "Home", path: "/Home", icon: "🏠" },
-  { label: "Desktop", path: "/Desktop", icon: "🖥️" },
-  { label: "Documents", path: "/Home/Documents", icon: "📄" },
-  { label: "Downloads", path: "/Home/Downloads", icon: "⬇️" },
-  { label: "Pictures", path: "/Home/Pictures", icon: "🖼️" },
-  { label: "Projects", path: "/Home/Projects", icon: "💻" },
-];
-
-type ViewMode = "grid" | "list";
+type ViewMode = 'grid' | 'list';
+type SortBy = 'name' | 'date' | 'size' | 'type';
 
 export default function FileManager({ windowId }: { windowId: string }) {
-  const [currentPath, setCurrentPath] = useState("/Home");
-  const [history, setHistory] = useState(["/Home"]);
-  const [histIdx, setHistIdx] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [selected, setSelected] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const { data: session } = useSession();
+  const fs = useFileSystem();
+  const { theme, openWindow } = useOSStore();
+  const [view, setView] = useState<ViewMode>('grid');
+  const [sortBy, setSortBy] = useState<SortBy>('name');
+  const [query, setQuery] = useState('');
+  const [navBack, setNavBack] = useState<string[]>([]);
+  const [navForward, setNavForward] = useState<string[]>([]);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState('');
+  const [creating, setCreating] = useState<'file' | 'folder' | null>(null);
+  const [createName, setCreateName] = useState('');
+  const [preview, setPreview] = useState<FileSystemNode | null>(null);
+  const [clipboard, setClipboard] = useState<{ node: FileSystemNode; op: 'copy' | 'cut' } | null>(null);
+  const lastClick = useRef<{ id: string; ts: number }>({ id: '', ts: 0 });
 
-  const items = FS_TREE[currentPath] || [];
-  const filtered = search ? items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())) : items;
+  const currentNode = fs.getNodeByPath(fs.currentPath);
+  const allChildren = currentNode ? fs.getChildren(currentNode.id) : [];
+  const children = allChildren
+    .filter((c) => !c.isHidden && (!query || c.name.toLowerCase().includes(query.toLowerCase())))
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      if (sortBy === 'date') return b.modifiedAt - a.modifiedAt;
+      if (sortBy === 'size') return (b.size || 0) - (a.size || 0);
+      return a.name.localeCompare(b.name);
+    });
 
-  const navigate = (path: string) => {
-    const newHistory = [...history.slice(0, histIdx + 1), path];
-    setHistory(newHistory);
-    setHistIdx(newHistory.length - 1);
-    setCurrentPath(path);
-    setSelected(null);
-    setSearch("");
-  };
+  const navigate = useCallback((path: string) => {
+    setNavBack((prev) => [...prev, fs.currentPath]);
+    setNavForward([]);
+    fs.setCurrentPath(path);
+    setQuery('');
+    setPreview(null);
+  }, [fs]);
 
-  const handleOpen = (item: FSItem) => {
-    if (item.type === "folder") {
-      const newPath = `${currentPath}/${item.name}`.replace("//", "/");
-      if (FS_TREE[newPath]) navigate(newPath);
+  const goBack = useCallback(() => {
+    const prev = navBack[navBack.length - 1];
+    if (!prev) return;
+    setNavForward((f) => [fs.currentPath, ...f]);
+    setNavBack((b) => b.slice(0, -1));
+    fs.setCurrentPath(prev);
+  }, [navBack, fs]);
+
+  const goForward = useCallback(() => {
+    const next = navForward[0];
+    if (!next) return;
+    setNavBack((b) => [...b, fs.currentPath]);
+    setNavForward((f) => f.slice(1));
+    fs.setCurrentPath(next);
+  }, [navForward, fs]);
+
+  const goUp = useCallback(() => {
+    const parts = fs.currentPath.split('/').filter(Boolean);
+    if (parts.length === 0) return;
+    parts.pop();
+    navigate('/' + parts.join('/') || '/');
+  }, [fs.currentPath, navigate]);
+
+  const handleNodeClick = useCallback((node: FileSystemNode) => {
+    const now = Date.now();
+    const isDouble = lastClick.current.id === node.id && now - lastClick.current.ts < 400;
+    lastClick.current = { id: node.id, ts: now };
+
+    if (isDouble) {
+      if (node.type === 'folder') { navigate(fs.getPath(node.id)); }
+      else { setPreview(node); openWindow('texteditor'); }
+      return;
     }
+    fs.selectNode(node.id);
+    setPreview(node);
+  }, [fs, navigate, openWindow]);
+
+  const startRename = (node: FileSystemNode) => { setRenaming(node.id); setRenameVal(node.name); };
+  const commitRename = () => { if (renaming && renameVal.trim()) fs.renameNode(renaming, renameVal.trim()); setRenaming(null); };
+
+  const startCreate = (type: 'file' | 'folder') => { setCreating(type); setCreateName(type === 'file' ? 'untitled.txt' : 'New Folder'); };
+  const commitCreate = () => {
+    if (!createName.trim() || !currentNode) return;
+    if (creating === 'file') fs.createFile(currentNode.id, createName.trim(), '');
+    else fs.createFolder(currentNode.id, createName.trim());
+    setCreating(null);
   };
 
-  const goBack = () => { if (histIdx > 0) { setHistIdx(histIdx - 1); setCurrentPath(history[histIdx - 1]); }};
-  const goForward = () => { if (histIdx < history.length - 1) { setHistIdx(histIdx + 1); setCurrentPath(history[histIdx + 1]); }};
-  const goUp = () => { const parts = currentPath.split("/").filter(Boolean); if (parts.length > 0) navigate("/" + parts.slice(0, -1).join("/")); };
+  const getIcon = (node: FileSystemNode) => {
+    if (node.type === 'folder') return <Folder size={view === 'grid' ? 32 : 16} style={{ color: '#60a5fa' }} />;
+    const ext = node.name.split('.').pop()?.toLowerCase() || '';
+    const colorMap: Record<string, string> = { md: '#f59e0b', txt: '#94a3b8', js: '#f7df1e', ts: '#3b82f6', json: '#22d3ee', html: '#f97316', css: '#a78bfa', py: '#22c55e', sh: '#22c55e', jpg: '#ec4899', png: '#ec4899' };
+    return <File size={view === 'grid' ? 28 : 16} style={{ color: colorMap[ext] || '#94a3b8' }} />;
+  };
 
-  const breadcrumbs = currentPath === "/" ? ["/"] : ["/", ...currentPath.split("/").filter(Boolean)];
+  const breadcrumbs = fs.currentPath.split('/').filter(Boolean);
+
+  // Sidebar quick-access
+  const SIDEBAR = [
+    { label: 'Home', path: '/home/user', icon: <Home size={14} /> },
+    { label: 'Documents', path: '/home/user/Documents', icon: <Folder size={14} style={{ color: '#60a5fa' }} /> },
+    { label: 'Downloads', path: '/home/user/Downloads', icon: <Folder size={14} style={{ color: '#22c55e' }} /> },
+    { label: 'Pictures', path: '/home/user/Pictures', icon: <Folder size={14} style={{ color: '#ec4899' }} /> },
+    { label: 'Music', path: '/home/user/Music', icon: <Folder size={14} style={{ color: '#f59e0b' }} /> },
+    { label: 'Trash', path: '/trash', icon: <Trash2 size={14} style={{ color: '#f87171' }} /> },
+  ];
 
   return (
-    <div className="h-full flex flex-col overflow-hidden" style={{ background: "#1a1a2e", color: "#e6edf3" }}>
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 flex-shrink-0"
-        style={{ background: "rgba(255,255,255,0.04)" }}>
-        <button onClick={goBack} disabled={histIdx === 0} className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition-colors text-white/80">◀</button>
-        <button onClick={goForward} disabled={histIdx >= history.length - 1} className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition-colors text-white/80">▶</button>
-        <button onClick={goUp} className="p-1.5 rounded hover:bg-white/10 transition-colors text-white/80">▲</button>
-        <button onClick={() => navigate(currentPath)} className="p-1.5 rounded hover:bg-white/10 transition-colors text-white/80">↺</button>
-
-        {/* Breadcrumb */}
-        <div className="flex-1 flex items-center gap-1 px-3 py-1 rounded-lg text-sm overflow-hidden"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-          {breadcrumbs.map((crumb, i) => (
-            <span key={i} className="flex items-center gap-1">
-              {i > 0 && <span className="text-white/30">›</span>}
-              <button
-                className="hover:text-white text-white/70 transition-colors"
-                onClick={() => navigate(i === 0 ? "/" : "/" + breadcrumbs.slice(1, i + 1).join("/"))}
-              >
-                {crumb}
-              </button>
-            </span>
-          ))}
-        </div>
-
-        {/* Search */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-sm"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-          <span className="text-white/40">🔍</span>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..."
-            className="bg-transparent outline-none text-white/80 w-32 text-sm placeholder-white/30" />
-        </div>
-
-        {/* View toggle */}
-        <div className="flex rounded-lg overflow-hidden border border-white/10">
-          <button onClick={() => setViewMode("grid")} className="px-2 py-1.5 text-sm transition-colors"
-            style={{ background: viewMode === "grid" ? "rgba(233,84,32,0.3)" : "transparent", color: viewMode === "grid" ? "#E95420" : "rgba(255,255,255,0.5)" }}>
-            ⊞
+    <div className="flex h-full text-sm" style={{ background: theme.mode === 'dark' ? '#0f0f1a' : '#f8f8fc', color: theme.mode === 'dark' ? '#e2e8f0' : '#1e1e2e' }}>
+      {/* Sidebar */}
+      <div className="w-44 flex-shrink-0 flex flex-col gap-1 p-2 border-r" style={{ borderColor: 'rgba(255,255,255,0.06)', background: theme.mode === 'dark' ? 'rgba(10,10,20,0.8)' : 'rgba(230,230,240,0.8)' }}>
+        <p className="text-[10px] font-semibold uppercase tracking-wider opacity-40 px-2 pt-1 pb-0.5">Quick Access</p>
+        {SIDEBAR.map((s) => (
+          <button key={s.path} onClick={() => navigate(s.path)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-xs transition-all"
+            style={{ background: fs.currentPath.startsWith(s.path) ? `${theme.accent}25` : 'transparent', color: fs.currentPath.startsWith(s.path) ? theme.accent : 'inherit' }}
+            onMouseEnter={(e) => { if (!fs.currentPath.startsWith(s.path)) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            onMouseLeave={(e) => { if (!fs.currentPath.startsWith(s.path)) e.currentTarget.style.background = 'transparent'; }}
+          >
+            {s.icon}<span>{s.label}</span>
           </button>
-          <button onClick={() => setViewMode("list")} className="px-2 py-1.5 text-sm transition-colors"
-            style={{ background: viewMode === "list" ? "rgba(233,84,32,0.3)" : "transparent", color: viewMode === "list" ? "#E95420" : "rgba(255,255,255,0.5)" }}>
-            ≡
-          </button>
-        </div>
+        ))}
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar bookmarks */}
-        <div className="w-44 flex-shrink-0 border-r border-white/10 overflow-y-auto py-2"
-          style={{ background: "rgba(0,0,0,0.2)" }}>
-          <div className="px-3 py-1 text-xs text-white/30 uppercase tracking-widest mb-1">Bookmarks</div>
-          {BOOKMARKS.map((bm) => (
-            <button key={bm.path} onClick={() => navigate(bm.path)}
-              className="w-full flex items-center gap-2.5 px-3 py-1.5 text-sm hover:bg-white/10 transition-colors rounded mx-1"
-              style={{ color: currentPath === bm.path ? "#E95420" : "rgba(255,255,255,0.65)", background: currentPath === bm.path ? "rgba(233,84,32,0.1)" : "transparent" }}>
-              <span>{bm.icon}</span>
-              <span>{bm.label}</span>
-            </button>
-          ))}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Toolbar */}
+        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <button onClick={goBack} disabled={navBack.length === 0} className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition-colors"><ArrowLeft size={14} /></button>
+          <button onClick={goForward} disabled={navForward.length === 0} className="p-1.5 rounded hover:bg-white/10 disabled:opacity-30 transition-colors"><ArrowRight size={14} /></button>
+          <button onClick={goUp} className="p-1.5 rounded hover:bg-white/10 transition-colors"><ArrowUp size={14} /></button>
+          <button onClick={() => navigate('/home/user')} className="p-1.5 rounded hover:bg-white/10 transition-colors"><Home size={14} /></button>
 
-          <div className="border-t border-white/10 mt-3 pt-3 px-3">
-            <div className="text-xs text-white/30 uppercase tracking-widest mb-2">Info</div>
-            {session ? (
-              <div className="text-xs text-white/50">
-                <div>👤 {session.user?.name || "User"}</div>
-                <div className="mt-1">💾 4.2 GB free</div>
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-0.5 flex-1 px-2 py-1 rounded-lg text-xs overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <span className="opacity-40">/</span>
+            {breadcrumbs.map((b, i) => (
+              <div key={i} className="flex items-center gap-0.5">
+                <button
+                  onClick={() => navigate('/' + breadcrumbs.slice(0, i + 1).join('/'))}
+                  className="hover:text-purple-400 transition-colors truncate"
+                >
+                  {b}
+                </button>
+                {i < breadcrumbs.length - 1 && <ChevronRight size={11} className="opacity-30 flex-shrink-0" />}
               </div>
-            ) : (
-              <div className="text-xs text-white/50">💾 4.2 GB free</div>
-            )}
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…"
+              className="pl-6 pr-2 py-1 rounded-lg text-xs outline-none w-28"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', caretColor: theme.accent }} />
+          </div>
+
+          <div className="flex gap-0.5">
+            <button onClick={() => startCreate('file')} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="New file"><Plus size={14} /></button>
+            <button onClick={() => startCreate('folder')} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="New folder"><FolderPlus size={14} /></button>
+          </div>
+
+          <div className="flex gap-0.5 border-l border-white/10 pl-1.5 ml-0.5">
+            <button onClick={() => setView('grid')} className="p-1.5 rounded transition-colors" style={{ background: view === 'grid' ? `${theme.accent}30` : 'transparent' }}><Grid3x3 size={14} /></button>
+            <button onClick={() => setView('list')} className="p-1.5 rounded transition-colors" style={{ background: view === 'list' ? `${theme.accent}30` : 'transparent' }}><List size={14} /></button>
           </div>
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-white/30">
-              <div className="text-4xl mb-2">📂</div>
-              <div className="text-sm">Empty folder</div>
+        {/* File grid / list */}
+        <div className="flex-1 overflow-y-auto p-2">
+          {/* Create new input */}
+          {creating && (
+            <div className="flex items-center gap-2 mb-2 p-2 rounded-lg border" style={{ borderColor: theme.accent, background: `${theme.accent}10` }}>
+              {creating === 'folder' ? <Folder size={16} style={{ color: '#60a5fa' }} /> : <File size={16} style={{ color: '#94a3b8' }} />}
+              <input value={createName} onChange={(e) => setCreateName(e.target.value)}
+                autoFocus onKeyDown={(e) => { if (e.key === 'Enter') commitCreate(); if (e.key === 'Escape') setCreating(null); }}
+                className="flex-1 bg-transparent outline-none text-sm" style={{ caretColor: theme.accent }} />
+              <button onClick={commitCreate} className="text-green-400"><Check size={14} /></button>
+              <button onClick={() => setCreating(null)} className="text-red-400"><X size={14} /></button>
             </div>
-          ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-5 gap-3">
-              {filtered.map((item) => (
-                <div key={item.name}
-                  onDoubleClick={() => handleOpen(item)}
-                  onClick={() => setSelected(item.name)}
-                  className="flex flex-col items-center gap-2 p-3 rounded-xl cursor-pointer transition-all"
-                  style={{
-                    background: selected === item.name ? "rgba(233,84,32,0.15)" : "rgba(255,255,255,0.04)",
-                    border: selected === item.name ? "1px solid rgba(233,84,32,0.4)" : "1px solid rgba(255,255,255,0.06)",
-                  }}>
-                  <span className="text-4xl leading-none">{item.icon || (item.type === "folder" ? "📁" : "📄")}</span>
-                  <span className="text-xs text-center text-white/70 leading-tight break-words max-w-full line-clamp-2">{item.name}</span>
-                  {item.size && <span className="text-xs text-white/30">{item.size}</span>}
+          )}
+
+          {children.length === 0 && !creating && (
+            <div className="flex flex-col items-center justify-center h-32 opacity-30">
+              <Folder size={36} />
+              <p className="text-xs mt-2">{query ? 'No matching files' : 'Empty folder'}</p>
+            </div>
+          )}
+
+          {view === 'grid' ? (
+            <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))' }}>
+              {children.map((node) => (
+                <div
+                  key={node.id}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer transition-all select-none"
+                  style={{ background: fs.selectedIds.includes(node.id) ? `${theme.accent}20` : 'transparent', border: `1px solid ${fs.selectedIds.includes(node.id) ? theme.accent + '40' : 'transparent'}` }}
+                  onClick={() => handleNodeClick(node)}
+                  onContextMenu={(e) => { e.preventDefault(); startRename(node); }}
+                  onMouseEnter={(e) => { if (!fs.selectedIds.includes(node.id)) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                  onMouseLeave={(e) => { if (!fs.selectedIds.includes(node.id)) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {getIcon(node)}
+                  {renaming === node.id ? (
+                    <input value={renameVal} onChange={(e) => setRenameVal(e.target.value)} autoFocus
+                      onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full text-center text-xs bg-transparent outline-none border-b border-purple-400" style={{ caretColor: theme.accent }} />
+                  ) : (
+                    <p className="text-[10px] text-center leading-tight line-clamp-2 break-all max-w-full">{node.name}</p>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="text-white/40 text-xs uppercase tracking-wide border-b border-white/10">
-                  <th className="text-left pb-2 font-medium">Name</th>
-                  <th className="text-left pb-2 font-medium w-24">Size</th>
-                  <th className="text-left pb-2 font-medium w-28">Modified</th>
+                <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  {['Name', 'Date', 'Size', 'Type'].map((h, i) => (
+                    <th key={h} className="text-left py-1 px-2 font-medium opacity-50 cursor-pointer hover:opacity-80"
+                      onClick={() => setSortBy(['name', 'date', 'size', 'type'][i] as SortBy)}
+                      style={{ color: sortBy === ['name', 'date', 'size', 'type'][i] ? theme.accent : 'inherit' }}>
+                      {h}
+                    </th>
+                  ))}
+                  <th className="w-8" />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.name}
-                    onDoubleClick={() => handleOpen(item)}
-                    onClick={() => setSelected(item.name)}
-                    className="group cursor-pointer rounded transition-colors"
-                    style={{
-                      background: selected === item.name ? "rgba(233,84,32,0.12)" : "transparent",
-                    }}>
-                    <td className="py-1.5 flex items-center gap-2.5">
-                      <span>{item.icon || "📄"}</span>
-                      <span className="text-white/80 group-hover:text-white">{item.name}</span>
+                {children.map((node) => (
+                  <tr key={node.id} className="border-b cursor-pointer transition-colors"
+                    style={{ borderColor: 'rgba(255,255,255,0.03)', background: fs.selectedIds.includes(node.id) ? `${theme.accent}15` : 'transparent' }}
+                    onClick={() => handleNodeClick(node)}
+                    onMouseEnter={(e) => { if (!fs.selectedIds.includes(node.id)) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                    onMouseLeave={(e) => { if (!fs.selectedIds.includes(node.id)) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <td className="py-1.5 px-2"><div className="flex items-center gap-2">{getIcon(node)}<span>{node.name}</span></div></td>
+                    <td className="py-1.5 px-2 opacity-50">{format(node.modifiedAt, 'MMM d, yyyy')}</td>
+                    <td className="py-1.5 px-2 opacity-50">{node.type === 'file' ? formatBytes(node.size || 0) : '—'}</td>
+                    <td className="py-1.5 px-2 opacity-50">{node.type === 'folder' ? 'Folder' : node.name.split('.').pop()?.toUpperCase() || 'File'}</td>
+                    <td className="py-1.5 px-2">
+                      <button onClick={(e) => { e.stopPropagation(); fs.deleteNode(node.id); }} className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-colors"><Trash2 size={12} /></button>
                     </td>
-                    <td className="py-1.5 text-white/40 text-xs">{item.size || "—"}</td>
-                    <td className="py-1.5 text-white/40 text-xs">{item.modified || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
-      </div>
 
-      {/* Status bar */}
-      <div className="px-4 py-1.5 text-xs text-white/40 border-t border-white/10 flex items-center justify-between flex-shrink-0"
-        style={{ background: "rgba(0,0,0,0.2)" }}>
-        <span>{filtered.length} item{filtered.length !== 1 ? "s" : ""}</span>
-        {selected && <span>Selected: {selected}</span>}
+        {/* Status bar */}
+        <div className="px-3 py-1 text-[10px] opacity-40 border-t flex justify-between" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <span>{children.length} items{fs.selectedIds.length > 0 ? `, ${fs.selectedIds.length} selected` : ''}</span>
+          <span>{fs.currentPath}</span>
+        </div>
       </div>
     </div>
   );

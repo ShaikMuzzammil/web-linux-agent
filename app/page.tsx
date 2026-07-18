@@ -73,22 +73,20 @@ export default function OS() {
     return <BootSequence onComplete={onBootComplete} />;
   }
 
+  const wallBg = theme.wallpaper
+    ? { backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: 'linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 40%, #0d1a2e 100%)' };
+
   if (bootPhase === 'login' || (!auth.isAuthenticated && !auth.isGuest)) {
     return (
-      <div
-        className="fixed inset-0"
-        style={{ backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-      >
+      <div className="fixed inset-0" style={wallBg}>
         <LoginScreen />
       </div>
     );
   }
 
   return (
-    <div
-      className="fixed inset-0 overflow-hidden"
-      style={{ backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-    >
+    <div className="fixed inset-0 overflow-hidden" style={wallBg}>
       {/* Subtle overlay for readability */}
       <div className="absolute inset-0" style={{ background: theme.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }} />
 

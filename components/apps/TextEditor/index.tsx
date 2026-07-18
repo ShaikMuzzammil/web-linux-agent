@@ -1,161 +1,179 @@
-"use client";
-import { useState, useRef } from "react";
+'use client';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Save, Plus, X, FileText, Moon, Sun, WrapText, Search, Replace } from 'lucide-react';
+import { useOSStore } from '@/hooks/useOSStore';
+import { useFileSystem } from '@/hooks/useFileSystem';
 
-const DEFAULT_FILES = [
-  { name: "notes.txt", content: `# My Notes\n\nThis is a text editor built into the Web Linux Agent.\nYou can type here, create new files, and save your work.\n\n## Today's Tasks\n- [ ] Complete portfolio\n- [ ] Push to GitHub\n- [ ] Deploy on Vercel\n- [x] Build Web Linux Agent\n\n## Ideas\n- Add more terminal commands\n- Improve window animations\n- Dark mode customization\n` },
-  { name: "about.md", content: `# Shaik Muzzammil\n\n## CSE Student & Full Stack Developer\n\n- 📍 Chennai, India\n- 📧 muzzammil160806@gmail.com\n- 🐙 github.com/ShaikMuzzammil\n\n## Tech Stack\nNext.js · TypeScript · PostgreSQL · Prisma · React\n` },
-];
+interface EditorTab { id: string; name: string; content: string; dirty: boolean; fsNodeId?: string }
+
+const LANG_MAP: Record<string, string> = {
+  js: 'JavaScript', ts: 'TypeScript', tsx: 'TSX', jsx: 'JSX', py: 'Python',
+  md: 'Markdown', json: 'JSON', html: 'HTML', css: 'CSS', sh: 'Shell', txt: 'Text',
+};
+
+const getLang = (name: string) => LANG_MAP[name.split('.').pop()?.toLowerCase() || ''] || 'Text';
 
 export default function TextEditor({ windowId }: { windowId: string }) {
-  const [files, setFiles] = useState(DEFAULT_FILES);
-  const [activeFile, setActiveFile] = useState(DEFAULT_FILES[0].name);
-  const [unsaved, setUnsaved] = useState<Set<string>>(new Set());
-  const [showNewFile, setShowNewFile] = useState(false);
-  const [newFileName, setNewFileName] = useState("");
+  const { theme } = useOSStore();
+  const fs = useFileSystem();
+  const [tabs, setTabs] = useState<EditorTab[]>([{ id: '1', name: 'untitled.txt', content: '', dirty: false }]);
+  const [activeId, setActiveId] = useState('1');
+  const [wordWrap, setWordWrap] = useState(true);
+  const [lineNums, setLineNums] = useState(true);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findText, setFindText] = useState('');
+  const [replaceText, setReplaceText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const currentFile = files.find((f) => f.name === activeFile)!;
+  const current = tabs.find((t) => t.id === activeId) || tabs[0];
 
-  const handleEdit = (val: string) => {
-    setFiles((prev) => prev.map((f) => f.name === activeFile ? { ...f, content: val } : f));
-    setUnsaved((prev) => new Set(prev).add(activeFile));
+  // Check if a file node was requested to be opened (via FS)
+  useEffect(() => {
+    const selected = fs.selectedIds[0];
+    if (!selected) return;
+    const node = fs.nodes[selected];
+    if (!node || node.type === 'folder') return;
+    const already = tabs.find((t) => t.fsNodeId === selected);
+    if (already) { setActiveId(already.id); return; }
+    const id = Math.random().toString(36).slice(2);
+    setTabs((prev) => [...prev, { id, name: node.name, content: node.content || '', dirty: false, fsNodeId: selected }]);
+    setActiveId(id);
+  }, [fs.selectedIds]);
+
+  const updateContent = useCallback((content: string) => {
+    setTabs((prev) => prev.map((t) => t.id === activeId ? { ...t, content, dirty: true } : t));
+  }, [activeId]);
+
+  const save = useCallback(() => {
+    if (current.fsNodeId) {
+      fs.updateFile(current.fsNodeId, current.content);
+    } else {
+      // Create new file in FS
+      const node = fs.getNodeByPath('/home/user/Documents');
+      const parentId = node?.id || 'user';
+      const nodeId = fs.createFile(parentId, current.name, current.content);
+      setTabs((prev) => prev.map((t) => t.id === activeId ? { ...t, dirty: false, fsNodeId: nodeId } : t));
+      return;
+    }
+    setTabs((prev) => prev.map((t) => t.id === activeId ? { ...t, dirty: false } : t));
+  }, [current, activeId, fs]);
+
+  const newTab = () => {
+    const id = Math.random().toString(36).slice(2);
+    setTabs((prev) => [...prev, { id, name: 'untitled.txt', content: '', dirty: false }]);
+    setActiveId(id);
   };
 
-  const handleSave = () => {
-    const next = new Set(unsaved);
-    next.delete(activeFile);
-    setUnsaved(next);
-  };
-
-  const handleNewFile = () => {
-    if (!newFileName.trim()) return;
-    const name = newFileName.endsWith(".txt") || newFileName.endsWith(".md") ? newFileName : newFileName + ".txt";
-    setFiles((prev) => [...prev, { name, content: "" }]);
-    setActiveFile(name);
-    setShowNewFile(false);
-    setNewFileName("");
-  };
-
-  const closeTab = (e: React.MouseEvent, name: string) => {
+  const closeTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const remaining = files.filter((f) => f.name !== name);
-    if (remaining.length === 0) return;
-    setFiles(remaining);
-    if (activeFile === name) setActiveFile(remaining[0].name);
+    if (tabs.length === 1) { setTabs([{ id: '1', name: 'untitled.txt', content: '', dirty: false }]); setActiveId('1'); return; }
+    const idx = tabs.findIndex((t) => t.id === id);
+    const next = tabs[idx === tabs.length - 1 ? idx - 1 : idx + 1];
+    setTabs((prev) => prev.filter((t) => t.id !== id));
+    setActiveId(next.id);
   };
 
-  const wordCount = currentFile?.content.trim().split(/\s+/).filter(Boolean).length || 0;
-  const lineCount = currentFile?.content.split("\n").length || 0;
-  const charCount = currentFile?.content.length || 0;
+  const handleFind = () => {
+    if (!findText || !textareaRef.current) return;
+    const idx = current.content.toLowerCase().indexOf(findText.toLowerCase());
+    if (idx >= 0) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(idx, idx + findText.length);
+    }
+  };
+
+  const handleReplace = () => {
+    if (!findText) return;
+    const newContent = current.content.replaceAll(findText, replaceText);
+    updateContent(newContent);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 's') { e.preventDefault(); save(); }
+      if (e.key === 'f') { e.preventDefault(); setFindOpen((v) => !v); }
+      if (e.key === 'n') { e.preventDefault(); newTab(); }
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const { selectionStart: s, selectionEnd: end } = ta;
+      const newContent = current.content.slice(0, s) + '  ' + current.content.slice(end);
+      updateContent(newContent);
+      setTimeout(() => ta.setSelectionRange(s + 2, s + 2), 0);
+    }
+  };
+
+  const lines = current.content.split('\n').length;
+  const col = textareaRef.current ? current.content.slice(0, textareaRef.current.selectionStart || 0).split('\n').pop()?.length ?? 0 : 0;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden" style={{ background: "#1e1e2e", color: "#cdd6f4" }}>
-      {/* Menu bar */}
-      <div className="flex items-center gap-4 px-4 py-1.5 text-xs border-b border-white/10 flex-shrink-0"
-        style={{ background: "rgba(0,0,0,0.2)" }}>
-        {[
-          { label: "File", actions: ["New", "Open", "Save", "Save As...", "Close"] },
-          { label: "Edit", actions: ["Undo", "Redo", "Cut", "Copy", "Paste", "Select All"] },
-          { label: "View", actions: ["Zoom In", "Zoom Out", "Word Wrap"] },
-          { label: "Help", actions: ["Keyboard Shortcuts", "About"] },
-        ].map((menu) => (
-          <div key={menu.label} className="relative group">
-            <button className="text-white/60 hover:text-white transition-colors px-1 py-0.5 rounded hover:bg-white/10">
-              {menu.label}
-            </button>
+    <div className="flex flex-col h-full" style={{ background: theme.mode === 'dark' ? '#0d1117' : '#f6f8fa', color: theme.mode === 'dark' ? '#e6edf3' : '#24292f', fontFamily: 'JetBrains Mono, Fira Code, Courier New, monospace' }}>
+      {/* Tabs */}
+      <div className="flex items-center gap-0 overflow-x-auto border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: theme.mode === 'dark' ? 'rgba(10,10,20,0.8)' : 'rgba(225,230,235,0.9)' }}>
+        {tabs.map((tab) => (
+          <div key={tab.id} onClick={() => setActiveId(tab.id)}
+            className="flex items-center gap-2 px-3 py-2 cursor-pointer border-r flex-shrink-0 min-w-[100px] max-w-[160px] group"
+            style={{ background: tab.id === activeId ? (theme.mode === 'dark' ? '#0d1117' : '#f6f8fa') : 'transparent', borderColor: 'rgba(255,255,255,0.06)', borderBottom: tab.id === activeId ? `2px solid ${theme.accent}` : '2px solid transparent' }}>
+            <FileText size={11} className="flex-shrink-0 opacity-40" />
+            <span className="text-xs truncate flex-1">{tab.name}{tab.dirty ? ' ●' : ''}</span>
+            <button onClick={(e) => closeTab(tab.id, e)} className="opacity-0 group-hover:opacity-100 flex-shrink-0"><X size={10} /></button>
           </div>
         ))}
-        <div className="ml-auto flex items-center gap-2">
-          <button onClick={() => setShowNewFile(true)}
-            className="flex items-center gap-1.5 text-white/60 hover:text-white transition-colors px-2 py-0.5 rounded hover:bg-white/10">
-            ＋ New File
-          </button>
-          <button onClick={handleSave}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded transition-all"
-            style={{ background: unsaved.has(activeFile) ? "#E95420" : "rgba(255,255,255,0.1)", color: "white" }}>
-            💾 {unsaved.has(activeFile) ? "Save*" : "Saved"}
-          </button>
+        <button onClick={newTab} className="p-2 hover:bg-white/08 flex-shrink-0"><Plus size={13} /></button>
+
+        {/* Right side controls */}
+        <div className="ml-auto flex items-center gap-1 px-2">
+          <button onClick={() => setWordWrap((v) => !v)} title="Word Wrap" className="p-1.5 rounded hover:bg-white/10" style={{ color: wordWrap ? theme.accent : 'inherit' }}><WrapText size={13} /></button>
+          <button onClick={() => setFindOpen((v) => !v)} title="Find (Ctrl+F)" className="p-1.5 rounded hover:bg-white/10"><Search size={13} /></button>
+          <button onClick={save} title="Save (Ctrl+S)" className="p-1.5 rounded hover:bg-white/10" style={{ color: current.dirty ? theme.accent : 'inherit' }}><Save size={13} /></button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-end overflow-x-auto flex-shrink-0 border-b border-black/30"
-        style={{ background: "#181825" }}>
-        {files.map((file) => (
-          <div key={file.name}
-            className="flex items-center gap-2 px-4 py-2 text-xs cursor-pointer border-r border-black/20 flex-shrink-0 group"
-            style={{
-              background: activeFile === file.name ? "#1e1e2e" : "#181825",
-              color: activeFile === file.name ? "#cdd6f4" : "#7f849c",
-              borderTop: activeFile === file.name ? "1px solid #E95420" : "1px solid transparent",
-            }}
-            onClick={() => setActiveFile(file.name)}>
-            <span>{file.name.endsWith(".md") ? "📖" : "📄"}</span>
-            <span>{file.name}</span>
-            {unsaved.has(file.name) && <span className="text-orange-400">●</span>}
-            <span onClick={(e) => closeTab(e, file.name)}
-              className="opacity-0 group-hover:opacity-100 hover:text-white ml-1">×</span>
-          </div>
-        ))}
-      </div>
-
-      {/* New file dialog */}
-      {showNewFile && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 flex-shrink-0"
-          style={{ background: "rgba(233,84,32,0.1)" }}>
-          <span className="text-xs text-white/60">New file name:</span>
-          <input value={newFileName} onChange={(e) => setNewFileName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleNewFile(); if (e.key === "Escape") setShowNewFile(false); }}
-            className="flex-1 bg-transparent border-b border-orange-500 outline-none text-white text-xs pb-0.5"
-            placeholder="filename.txt" autoFocus />
-          <button onClick={handleNewFile} className="text-xs text-orange-400 hover:text-orange-300">Create</button>
-          <button onClick={() => setShowNewFile(false)} className="text-xs text-white/40 hover:text-white/60">Cancel</button>
+      {/* Find/Replace bar */}
+      {findOpen && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b flex-shrink-0" style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)' }}>
+          <Search size={13} className="opacity-40" />
+          <input value={findText} onChange={(e) => setFindText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleFind(); if (e.key === 'Escape') setFindOpen(false); }}
+            placeholder="Find…" className="bg-transparent outline-none text-xs px-2 py-1 rounded border w-32" style={{ borderColor: 'rgba(255,255,255,0.15)', caretColor: theme.accent }} autoFocus />
+          <Replace size={13} className="opacity-40" />
+          <input value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="Replace…"
+            className="bg-transparent outline-none text-xs px-2 py-1 rounded border w-32" style={{ borderColor: 'rgba(255,255,255,0.15)', caretColor: theme.accent }} />
+          <button onClick={handleFind} className="text-xs px-2 py-1 rounded" style={{ background: `${theme.accent}20`, color: theme.accent }}>Find</button>
+          <button onClick={handleReplace} className="text-xs px-2 py-1 rounded" style={{ background: `${theme.accent}20`, color: theme.accent }}>Replace All</button>
+          <button onClick={() => setFindOpen(false)} className="ml-auto"><X size={13} /></button>
         </div>
       )}
 
       {/* Editor */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex">
         {/* Line numbers */}
-        <div className="py-4 px-2 text-right text-xs leading-relaxed flex-shrink-0 overflow-hidden select-none"
-          style={{ background: "#181825", color: "#585b70", minWidth: 40, fontFamily: "'Ubuntu Mono', monospace" }}>
-          {currentFile?.content.split("\n").map((_, i) => (
-            <div key={i} className="leading-[22px]">{i + 1}</div>
-          ))}
-        </div>
-
-        {/* Text area */}
+        {lineNums && (
+          <div className="flex-shrink-0 py-2 px-2 text-right select-none overflow-hidden" style={{ background: theme.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)', minWidth: 44, color: 'rgba(128,128,160,0.5)', fontSize: 12, lineHeight: '1.6', fontFamily: 'inherit' }}>
+            {Array.from({ length: lines }, (_, i) => <div key={i}>{i + 1}</div>)}
+          </div>
+        )}
         <textarea
           ref={textareaRef}
-          value={currentFile?.content || ""}
-          onChange={(e) => handleEdit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "s" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleSave(); }
-            if (e.key === "Tab") { e.preventDefault(); const s = e.currentTarget.selectionStart; const en = e.currentTarget.selectionEnd; handleEdit(currentFile.content.slice(0, s) + "  " + currentFile.content.slice(en)); setTimeout(() => { if (textareaRef.current) { textareaRef.current.selectionStart = textareaRef.current.selectionEnd = s + 2; } }); }
-          }}
-          className="flex-1 p-4 bg-transparent outline-none resize-none text-sm leading-[22px]"
-          style={{
-            color: "#cdd6f4",
-            fontFamily: "'Ubuntu Mono', 'Courier New', monospace",
-            fontSize: 13,
-            caretColor: "#E95420",
-          }}
+          value={current.content}
+          onChange={(e) => updateContent(e.target.value)}
+          onKeyDown={handleKeyDown}
           spellCheck={false}
+          className="flex-1 p-3 bg-transparent outline-none resize-none text-xs leading-relaxed"
+          style={{ caretColor: theme.accent, whiteSpace: wordWrap ? 'pre-wrap' : 'pre', overflowWrap: wordWrap ? 'break-word' : 'normal', overflowX: wordWrap ? 'hidden' : 'auto', lineHeight: 1.6 }}
+          placeholder="Start typing…"
         />
       </div>
 
       {/* Status bar */}
-      <div className="flex items-center justify-between px-4 py-1 text-xs flex-shrink-0"
-        style={{ background: "#181825", borderTop: "1px solid rgba(255,255,255,0.08)", color: "#585b70" }}>
-        <div className="flex gap-4">
-          <span>Line {lineCount}</span>
-          <span>{wordCount} words</span>
-          <span>{charCount} chars</span>
-        </div>
-        <div className="flex gap-3">
-          <span>UTF-8</span>
-          <span>{activeFile.endsWith(".md") ? "Markdown" : "Plain Text"}</span>
-          {unsaved.has(activeFile) && <span className="text-orange-400">● Unsaved changes</span>}
-        </div>
+      <div className="flex items-center justify-between px-3 py-1 text-[10px] opacity-50 border-t flex-shrink-0"
+        style={{ borderColor: 'rgba(255,255,255,0.06)', background: theme.mode === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)' }}>
+        <span>{getLang(current.name)}</span>
+        <span>Ln {lines}, Col {col}</span>
+        <span>{current.content.length} chars</span>
+        <span>UTF-8</span>
+        <span>{current.dirty ? 'Modified' : 'Saved'}</span>
       </div>
     </div>
   );

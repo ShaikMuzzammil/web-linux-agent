@@ -1,5 +1,5 @@
 'use client';
-import { memo, useRef, useState, useCallback } from 'react';
+import React, { memo, useRef, useState, useCallback } from 'react';
 import * as Icons from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 import { useOSStore } from '@/hooks/useOSStore';
@@ -142,10 +142,15 @@ export default memo(function Desktop() {
     document.addEventListener('mouseup', up);
   }, [selectDesktopIcon, hideContextMenu]);
 
+  // Build wallpaper style
+  const wallpaperStyle: React.CSSProperties = theme.wallpaper
+    ? { backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: 'linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 40%, #0d1a2e 100%)' };
+
   return (
     <div
-      className="fixed inset-0 overflow-hidden"
-      style={{ top: 28, bottom: 0 }}
+      className="fixed inset-0 overflow-hidden transition-all duration-700"
+      style={{ top: 28, bottom: 0, ...wallpaperStyle }}
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}
     >

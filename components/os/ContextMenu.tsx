@@ -10,7 +10,7 @@ const DynIcon = ({ name, ...p }: { name: string } & LucideProps) => {
 };
 
 export default memo(function ContextMenu() {
-  const { contextMenu, theme, hideContextMenu, openWindow, pinDockItem, unpinDockItem, addDesktopIcon, minimizeAll, cascadeWindows, setAppLauncher } = useOSStore();
+  const { contextMenu, theme, hideContextMenu, openWindow, pinDockItem, unpinDockItem, addDesktopIcon, minimizeAll, cascadeWindows, setAppLauncher, closeWindow, windows } = useOSStore();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +40,11 @@ export default memo(function ContextMenu() {
       case 'open': openWindow(arg); break;
       case 'pin': pinDockItem(arg); break;
       case 'unpin': unpinDockItem(arg); break;
+      case 'close': {
+        const w = windows.find(w => w.appId === arg);
+        if (w) closeWindow(w.id);
+        break;
+      }
       case 'launcher': setAppLauncher(true); break;
       case 'minimize-all': minimizeAll(); break;
       case 'cascade': cascadeWindows(); break;

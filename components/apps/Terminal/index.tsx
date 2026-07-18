@@ -1,526 +1,416 @@
-"use client";
-import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { useSession } from "next-auth/react";
+'use client';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
+import { useFileSystem } from '@/hooks/useFileSystem';
+import { useOSStore } from '@/hooks/useOSStore';
 
-interface HistoryLine {
-  type: "input" | "output" | "error" | "info";
-  content: string;
-}
+interface HistoryEntry { input: string; output: string; type: 'output' | 'error' | 'info' | 'success' }
 
-const FILES: Record<string, string> = {
-  "/home/muzzammil/readme.txt": `Welcome to Shaik Muzzammil's Web Linux Terminal!
-========================================
-Type 'help' to see available commands.
-Type 'about' to learn about me.
-Type 'projects' to see my projects.
-Type 'skills' to see my technical skills.
-`,
-  "/home/muzzammil/resume.txt": `SHAIK MUZZAMMIL
-========================
-CSE Student @ Amrita Vishwa Vidyapeetham (2024-2028)
-Full Stack Developer | Chennai, India
-Email: muzzammil160806@gmail.com
-GitHub: ShaikMuzzammil
-LinkedIn: shaik-muzzammil
-`,
-  "/home/muzzammil/projects/cortexcart.md": `# CortexCart
-Multi-portal e-commerce platform built with Next.js, TypeScript, and PostgreSQL.
-Features: Customer portal, Admin dashboard, Host management, AI recommendations.
-`,
-  "/home/muzzammil/projects/smart-query-optimizer.md": `# Smart Query Optimizer
-AI-powered SQL workspace with natural language to SQL conversion.
-Built with Next.js, Prisma ORM, PostgreSQL, Monaco Editor.
-`,
-};
-
-const DIRS: Record<string, string[]> = {
-  "/": ["home", "etc", "usr", "var", "tmp"],
-  "/home": ["muzzammil"],
-  "/home/muzzammil": ["readme.txt", "resume.txt", "projects", "documents", "downloads"],
-  "/home/muzzammil/projects": ["cortexcart.md", "smart-query-optimizer.md", "omnipoll.md", "agrowave.md"],
-  "/home/muzzammil/documents": [],
-  "/home/muzzammil/downloads": [],
-};
+const BANNER = `\u001b[35mWebLinuxOS\u001b[0m v2.0.0 — Type \u001b[36mhelp\u001b[0m for commands\n`;
 
 export default function Terminal({ windowId }: { windowId: string }) {
-  const { data: session } = useSession();
-  const username = session?.user?.name?.split(" ")[0]?.toLowerCase() || "guest";
-  const hostname = "muzzammil-pc";
-  const [history, setHistory] = useState<HistoryLine[]>([
-    { type: "info", content: `Ubuntu 22.04.3 LTS - Web Linux Agent v2.0` },
-    { type: "info", content: `Built by Shaik Muzzammil | Type 'help' for commands` },
-    { type: "info", content: `Last login: ${new Date().toDateString()}` },
-    { type: "output", content: "" },
-  ]);
-  const [input, setInput] = useState("");
-  const [cwd, setCwd] = useState("/home/muzzammil");
+  const [history, setHistory] = useState<HistoryEntry[]>([{ input: '', output: BANNER, type: 'info' }]);
+  const [input, setInput] = useState('');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
-  const [historyIdx, setHistoryIdx] = useState(-1);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [cmdIdx, setCmdIdx] = useState(-1);
+  const { auth, theme, openWindow } = useOSStore();
+  const fs = useFileSystem();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [history]);
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
-  const addOutput = (lines: string[], type: HistoryLine["type"] = "output") => {
-    setHistory((prev) => [
-      ...prev,
-      ...lines.map((content) => ({ type, content })),
-    ]);
-  };
+  const prompt = `\u001b[32m${auth.userName.toLowerCase()}@weblinux\u001b[0m:\u001b[34m${fs.currentPath}\u001b[0m$ `;
 
-  const prompt = `${username}@${hostname}:${cwd.replace("/home/muzzammil", "~")}$ `;
+  const resolvePath = useCallback((p: string): string => {
+    if (p.startsWith('/')) return p;
+    if (p === '~') return '/home/user';
+    if (p.startsWith('~/')) return '/home/user/' + p.slice(2);
+    if (p === '..') {
+      const parts = fs.currentPath.split('/').filter(Boolean);
+      parts.pop();
+      return '/' + parts.join('/') || '/';
+    }
+    return fs.currentPath + (fs.currentPath.endsWith('/') ? '' : '/') + p;
+  }, [fs.currentPath]);
 
-  const processCommand = (cmd: string) => {
-    const parts = cmd.trim().split(/\s+/);
-    const command = parts[0];
-    const args = parts.slice(1);
+  const run = useCallback((cmd: string): HistoryEntry => {
+    const [name, ...args] = cmd.trim().split(/\s+/);
+    const out = (o: string, t: HistoryEntry['type'] = 'output') => ({ input: cmd, output: o, type: t });
 
-    addOutput([`${prompt}${cmd}`], "input");
+    switch (name) {
+      case 'help':
+        return out([
+          '┌─────────────────────────────────────┐',
+          '│       WebLinuxOS — Commands          │',
+          '├─────────────────────────────────────┤',
+          '  ls [-la]       List directory',
+          '  cd <dir>       Change directory',
+          '  pwd            Print working directory',
+          '  cat <file>     Show file contents',
+          '  echo <text>    Print text',
+          '  mkdir <dir>    Create directory',
+          '  touch <file>   Create file',
+          '  rm <path>      Delete file/dir',
+          '  mv <src> <dst> Move/rename',
+          '  cp <src> <dst> Copy file',
+          '  find <name>    Find files by name',
+          '  grep <pat> <f> Search in file',
+          '  head/tail <f>  First/last 10 lines',
+          '  wc <file>      Word/line count',
+          '  history        Command history',
+          '  clear          Clear terminal',
+          '  date           Show date/time',
+          '  whoami         Current user',
+          '  uname [-a]     System info',
+          '  df             Disk usage',
+          '  free           Memory info',
+          '  ps             Running processes',
+          '  env            Environment vars',
+          '  which <cmd>    Find command path',
+          '  man <cmd>      Manual page',
+          '  open <app>     Open application',
+          '  calc <expr>    Calculator',
+          '  base64 <txt>   Encode base64',
+          '  md5 <txt>      MD5 hash (simulated)',
+          '  curl <url>     HTTP request (simulated)',
+          '  ping <host>    Ping host (simulated)',
+          '  neofetch       System info art',
+          '└─────────────────────────────────────┘',
+        ].join('\n'), 'info');
 
-    switch (command) {
-      case "":
-        break;
+      case 'clear':
+        setHistory([{ input: '', output: BANNER, type: 'info' }]);
+        return { input: cmd, output: '', type: 'output' };
 
-      case "help":
-        addOutput([
-          "  AVAILABLE COMMANDS",
-          "  ─────────────────────────────────────────",
-          "  Navigation:    ls, cd, pwd, mkdir, rm, cp, mv",
-          "  View:          cat, echo, clear, history",
-          "  Info:          whoami, uname, date, uptime, neofetch",
-          "  Portfolio:     about, skills, projects, education, contact",
-          "  Network:       ping, curl, wget (simulated)",
-          "  Process:       ps, top, kill",
-          "  Fun:           cowsay, fortune, matrix, sl",
-          "  Other:         sudo, apt, git, node, python3",
-        ]);
-        break;
+      case 'pwd':
+        return out(fs.currentPath);
 
-      case "about":
-        addOutput([
-          "",
-          "  ╔═══════════════════════════════════════╗",
-          "  ║      SHAIK MUZZAMMIL                  ║",
-          "  ║      Full Stack Developer              ║",
-          "  ╚═══════════════════════════════════════╝",
-          "",
-          "  👨‍💻  3rd Year CSE Student @ Amrita Vishwa Vidyapeetham",
-          "  📍  Chennai, India",
-          "  📧  muzzammil160806@gmail.com",
-          "  🔗  github.com/ShaikMuzzammil",
-          "  🔗  linkedin.com/in/shaik-muzzammil",
-          "",
-          "  Building scalable full-stack apps, REST APIs,",
-          "  and database-driven systems. Interested in",
-          "  Software Engineering and backend development.",
-          "",
-        ]);
-        break;
+      case 'whoami':
+        return out(auth.userName.toLowerCase());
 
-      case "neofetch":
-        addOutput([
-          "",
-          "          .-/+oossssoo+/-.               \x1b[1;37mmuzzammil\x1b[0m@\x1b[1;37mmuzzammil-pc",
-          "        ':+ssssssssssssssss+:`           ─────────────────────",
-          "      -+ssssssssssssssssss+:-           \x1b[1;33mOS\x1b[0m: Ubuntu 22.04.3 LTS",
-          "    .ossssssssssssssssssss/`             \x1b[1;33mHost\x1b[0m: Web Linux Agent",
-          `   /sssssssssssssssssssss+               \x1b[1;33mKernel\x1b[0m: 5.15.0-91-generic`,
-          "  +sssssssssssssssssssssss.              \x1b[1;33mUptime\x1b[0m: ${Math.floor(Date.now()/3600000 % 24)}h ${Math.floor(Date.now()/60000 % 60)}m",
-          " `sssssssssssssssssssssssss`             \x1b[1;33mShell\x1b[0m: bash 5.1.16",
-          " .sssssssssssssssssssssssss.             \x1b[1;33mResolution\x1b[0m: 1920x1080",
-          " +ssss################sssss+             \x1b[1;33mDE\x1b[0m: GNOME 42.5",
-          " +ssss################sssss+             \x1b[1;33mTerminal\x1b[0m: Web Terminal",
-          " .sssssssssssssssssssssssss.             \x1b[1;33mCPU\x1b[0m: Intel i7-12700H",
-          " `sssssssssssssssssssssssss`             \x1b[1;33mMemory\x1b[0m: 2.1GiB / 16GiB",
-          "  +sssssssssssssssssssssss.              ",
-          "   /sssssssssssssssssssss+               \x1b[30m████\x1b[31m████\x1b[32m████\x1b[33m████",
-          "    .ossssssssssssssssssss/`             \x1b[34m████\x1b[35m████\x1b[36m████\x1b[37m████",
-          "      -+ssssssssssssssssss+:-",
-          "        ':+ssssssssssssssss+:`",
-          "          .-/+oossssoo+/-.   ",
-          "",
-        ]);
-        break;
+      case 'date':
+        return out(new Date().toString());
 
-      case "skills":
-        addOutput([
-          "",
-          "  TECHNICAL SKILLS",
-          "  ──────────────────────────────────────",
-          "  Languages  │ Python  ████████░░ 80%",
-          "             │ Java    ███████░░░ 70%",
-          "             │ C       ██████░░░░ 60%",
-          "  ──────────────────────────────────────",
-          "  Web        │ JavaScript  █████████░ 90%",
-          "             │ TypeScript  ████████░░ 80%",
-          "             │ React.js    ████████░░ 80%",
-          "             │ Next.js     ████████░░ 80%",
-          "             │ Node.js     ███████░░░ 70%",
-          "  ──────────────────────────────────────",
-          "  Databases  │ PostgreSQL  ████████░░ 80%",
-          "             │ Prisma ORM  ████████░░ 80%",
-          "  ──────────────────────────────────────",
-          "  DevOps     │ Git         ████████░░ 80%",
-          "             │ Docker      ██████░░░░ 60%",
-          "             │ Linux       ███████░░░ 70%",
-          "  ──────────────────────────────────────",
-          "  Exploring  │ AI/ML, LLMs, System Design",
-          "",
-        ]);
-        break;
-
-      case "projects":
-        addOutput([
-          "",
-          "  MY PROJECTS",
-          "  ─────────────────────────────────────────────────",
-          "",
-          "  1. CortexCart — E-Commerce Platform",
-          "     Next.js · TypeScript · PostgreSQL · Prisma",
-          "     Multi-portal platform with Customer, Admin & Host apps",
-          "     🔗 github.com/ShaikMuzzammil/cortexcart",
-          "",
-          "  2. Smart Query Optimizer — SQL Workspace",
-          "     Next.js · Monaco Editor · AI · PostgreSQL",
-          "     AI-powered SQL tool with natural language conversion",
-          "     🔗 github.com/ShaikMuzzammil/smart-query-optimizer",
-          "",
-          "  3. OmniPoll — Real-Time Polling",
-          "     React · TypeScript · WebSockets · PostgreSQL",
-          "     Live polling with WebSocket sync & leaderboards",
-          "     🔗 github.com/ShaikMuzzammil/omnipoll",
-          "",
-          "  4. AgroWave — Agriculture Dashboard",
-          "     Next.js · Tailwind CSS · Charts",
-          "     Analytics dashboard with 95+ Lighthouse score",
-          "     🔗 github.com/ShaikMuzzammil/agrowave",
-          "",
-        ]);
-        break;
-
-      case "education":
-        addOutput([
-          "",
-          "  EDUCATION",
-          "  ──────────────────────────────────────────",
-          "  🎓 Amrita Vishwa Vidyapeetham, Chennai",
-          "     B.Tech in Computer Science & Engineering",
-          "     Expected Graduation: 2028",
-          "",
-          "  CERTIFICATIONS",
-          "  ──────────────────────────────────────────",
-          "  ✓ JPMorgan Chase & Co. — Software Engineering",
-          "  ✓ Vista Equity Partners — AI in Action",
-          "  ✓ Databricks — Generative AI Fundamentals",
-          "  ✓ Google — Gemini for University Students",
-          "",
-        ]);
-        break;
-
-      case "contact":
-        addOutput([
-          "",
-          "  CONTACT",
-          "  ──────────────────────────────────────",
-          "  📧 Email:    muzzammil160806@gmail.com",
-          "  📱 Phone:    +91 9100128504",
-          "  🐙 GitHub:   github.com/ShaikMuzzammil",
-          "  💼 LinkedIn: linkedin.com/in/shaik-muzzammil",
-          "  📍 Location: Chennai, Tamil Nadu, India",
-          "",
-          "  Or open the Contact app from the dock!",
-          "",
-        ]);
-        break;
-
-      case "ls": {
-        const path = args[0] ? (args[0].startsWith("/") ? args[0] : `${cwd}/${args[0]}`) : cwd;
-        const contents = DIRS[path];
-        if (contents !== undefined) {
-          if (contents.length === 0) {
-            addOutput(["(empty directory)"]);
-          } else {
-            const formatted = contents.map((item) => {
-              const isDir = DIRS[`${path}/${item}`] !== undefined || DIRS[`/${item}`] !== undefined;
-              return isDir ? `\x1b[1;34m${item}/\x1b[0m` : item;
-            });
-            addOutput([formatted.join("  ")]);
-          }
-        } else {
-          addOutput([`ls: cannot access '${path}': No such file or directory`], "error");
-        }
-        break;
+      case 'uname': {
+        const full = args.includes('-a');
+        return out(full ? 'Linux weblinux 6.8.0-webos #1 SMP x86_64 GNU/Linux' : 'Linux');
       }
 
-      case "cd": {
-        const target = args[0] || "/home/muzzammil";
-        const newPath = target === "~" ? "/home/muzzammil" :
-          target === ".." ? cwd.split("/").slice(0, -1).join("/") || "/" :
-          target.startsWith("/") ? target : `${cwd}/${target}`;
-        if (DIRS[newPath] !== undefined) {
-          setCwd(newPath);
-        } else {
-          addOutput([`bash: cd: ${target}: No such file or directory`], "error");
+      case 'ls': {
+        const showAll = args.includes('-a') || args.includes('-la');
+        const longForm = args.includes('-l') || args.includes('-la');
+        const targetPath = args.find((a) => !a.startsWith('-'));
+        const node = targetPath ? fs.getNodeByPath(resolvePath(targetPath)) : fs.getNodeByPath(fs.currentPath);
+        if (!node || node.type !== 'folder') return out(`ls: cannot access '${targetPath}': No such file or directory`, 'error');
+        const children = fs.getChildren(node.id).filter((c) => showAll || !c.isHidden);
+        if (children.length === 0) return out('');
+        if (longForm) {
+          const rows = children.map((c) => {
+            const type = c.type === 'folder' ? 'd' : '-';
+            const size = (c.size || 0).toString().padStart(6);
+            const date = new Date(c.modifiedAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const nameColor = c.type === 'folder' ? '\x1b[34m' : '\x1b[0m';
+            return `${type}rw-r--r-- 1 user user ${size} ${date} ${nameColor}${c.name}\x1b[0m`;
+          });
+          return out(rows.join('\n'));
         }
-        break;
+        const names = children.map((c) => c.type === 'folder' ? `\x1b[34m${c.name}/\x1b[0m` : c.name);
+        return out(names.join('  '));
       }
 
-      case "pwd":
-        addOutput([cwd]);
-        break;
-
-      case "cat": {
-        if (!args[0]) { addOutput(["cat: missing operand"], "error"); break; }
-        const filePath = args[0].startsWith("/") ? args[0] : `${cwd}/${args[0]}`;
-        const content = FILES[filePath];
-        if (content) {
-          addOutput(content.split("\n"));
-        } else {
-          addOutput([`cat: ${args[0]}: No such file or directory`], "error");
-        }
-        break;
+      case 'cd': {
+        const target = args[0] || '~';
+        const newPath = resolvePath(target);
+        const node = fs.getNodeByPath(newPath);
+        if (!node) return out(`cd: ${args[0]}: No such file or directory`, 'error');
+        if (node.type !== 'folder') return out(`cd: ${args[0]}: Not a directory`, 'error');
+        fs.setCurrentPath(newPath);
+        return out('');
       }
 
-      case "echo":
-        addOutput([args.join(" ")]);
-        break;
-
-      case "whoami":
-        addOutput([username]);
-        break;
-
-      case "date":
-        addOutput([new Date().toString()]);
-        break;
-
-      case "uname":
-        addOutput([args.includes("-a") ? "Linux muzzammil-pc 5.15.0-91-generic #101-Ubuntu SMP Tue Nov 14 13:30:08 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux" : "Linux"]);
-        break;
-
-      case "uptime": {
-        const now = new Date();
-        addOutput([` ${now.toLocaleTimeString()} up ${Math.floor(Math.random() * 48 + 1)}:${String(Math.floor(Math.random() * 60)).padStart(2, "0")},  1 user,  load average: 0.12, 0.08, 0.09`]);
-        break;
+      case 'cat': {
+        if (!args[0]) return out('cat: missing operand', 'error');
+        const node = fs.getNodeByPath(resolvePath(args[0]));
+        if (!node) return out(`cat: ${args[0]}: No such file or directory`, 'error');
+        if (node.type === 'folder') return out(`cat: ${args[0]}: Is a directory`, 'error');
+        return out(node.content || '(empty file)');
       }
 
-      case "ps":
-        addOutput([
-          "  PID TTY          TIME CMD",
-          "    1 ?        00:00:01 systemd",
-          " 1234 pts/0    00:00:00 bash",
-          " 5678 pts/0    00:00:00 node",
-          " 9012 pts/0    00:00:00 ps",
-        ]);
-        break;
+      case 'echo':
+        return out(args.join(' '));
 
-      case "top":
-        addOutput([
-          "top - " + new Date().toLocaleTimeString(),
-          "Tasks: 142 total, 1 running, 141 sleeping",
-          "Cpu(s): 2.3%us, 0.8%sy, 0.0%ni, 96.5%id",
-          "MiB Mem: 16384.0 total, 8192.0 free, 4096.0 used",
-          "  PID USER    PR  NI  VIRT   RES SHR  S  %CPU %MEM  TIME+ COMMAND",
-          " 1234 muzzam  20   0  512M  128M  32M  S   1.2  0.8  0:12.34 node",
-          " 5678 muzzam  20   0  256M   64M  16M  S   0.3  0.4  0:02.11 bash",
-        ]);
-        break;
-
-      case "clear":
-        setHistory([]);
-        break;
-
-      case "history":
-        addOutput(cmdHistory.map((c, i) => `  ${String(i + 1).padStart(4)} ${c}`));
-        break;
-
-      case "ping": {
-        const host = args[0] || "google.com";
-        addOutput([
-          `PING ${host} (142.250.195.46) 56(84) bytes of data.`,
-          `64 bytes from ${host}: icmp_seq=1 ttl=115 time=12.3 ms`,
-          `64 bytes from ${host}: icmp_seq=2 ttl=115 time=11.8 ms`,
-          `64 bytes from ${host}: icmp_seq=3 ttl=115 time=12.1 ms`,
-          `--- ${host} ping statistics ---`,
-          `3 packets transmitted, 3 received, 0% packet loss`,
-          `rtt min/avg/max/mdev = 11.8/12.1/12.3/0.2 ms`,
-        ]);
-        break;
+      case 'mkdir': {
+        if (!args[0]) return out('mkdir: missing operand', 'error');
+        const parent = fs.getNodeByPath(fs.currentPath);
+        if (!parent) return out('mkdir: cannot create directory', 'error');
+        fs.createFolder(parent.id, args[0]);
+        return out('');
       }
 
-      case "mkdir":
-        if (!args[0]) { addOutput(["mkdir: missing operand"], "error"); break; }
-        addOutput([`Directory '${args[0]}' created.`]);
-        break;
-
-      case "git":
-        if (args[0] === "status") {
-          addOutput([
-            "On branch main",
-            "Your branch is up to date with 'origin/main'.",
-            "nothing to commit, working tree clean",
-          ]);
-        } else if (args[0] === "log") {
-          addOutput([
-            "commit a3f8e12 (HEAD -> main)",
-            "Author: Shaik Muzzammil <muzzammil160806@gmail.com>",
-            "Date:   " + new Date().toDateString(),
-            "",
-            "    feat: complete web linux agent with full features",
-          ]);
-        } else {
-          addOutput([`git: '${args[0]}' subcommand simulated`]);
-        }
-        break;
-
-      case "node":
-        addOutput(["Node.js v18.19.0 (simulated)"]);
-        break;
-
-      case "python3":
-        if (args[0]) {
-          addOutput([`python3: Running ${args[0]} (simulated)`]);
-        } else {
-          addOutput(["Python 3.11.6 (simulated REPL - type 'exit' to quit)"]);
-        }
-        break;
-
-      case "sudo":
-        addOutput(["[sudo] password for muzzammil:", "Sorry, try again. (simulated)"]);
-        break;
-
-      case "apt":
-        if (args[0] === "update") {
-          addOutput(["Hit:1 http://archive.ubuntu.com/ubuntu jammy InRelease", "Reading package lists... Done"]);
-        } else if (args[0] === "install") {
-          addOutput([`Installing ${args.slice(1).join(" ")}... Done (simulated)`]);
-        } else {
-          addOutput(["apt: simulated package manager"]);
-        }
-        break;
-
-      case "cowsay": {
-        const msg = args.join(" ") || "Moo!";
-        addOutput([
-          ` ${"_".repeat(msg.length + 2)}`,
-          `< ${msg} >`,
-          ` ${"─".repeat(msg.length + 2)}`,
-          "        \\   ^__^",
-          "         \\  (oo)\\_______",
-          "            (__)\\       )\\/\\",
-          "                ||----w |",
-          "                ||     ||",
-        ]);
-        break;
+      case 'touch': {
+        if (!args[0]) return out('touch: missing file operand', 'error');
+        const parent = fs.getNodeByPath(fs.currentPath);
+        if (!parent) return out('touch: error', 'error');
+        fs.createFile(parent.id, args[0], '');
+        return out('');
       }
 
-      case "fortune":
-        addOutput([
-          `"The best way to predict the future is to invent it." — Alan Kay`,
-        ]);
-        break;
+      case 'rm': {
+        if (!args[0]) return out('rm: missing operand', 'error');
+        const node = fs.getNodeByPath(resolvePath(args[0]));
+        if (!node) return out(`rm: cannot remove '${args[0]}': No such file or directory`, 'error');
+        fs.deleteNode(node.id);
+        return out('');
+      }
 
-      case "matrix":
-        addOutput([
-          "\x1b[32mEntering the Matrix...\x1b[0m",
-          "\x1b[32m01001000 01100101 01101100 01101100 01101111\x1b[0m",
-          "\x1b[32m01010111 01101111 01110010 01101100 01100100\x1b[0m",
-          "\x1b[32m[Matrix simulation complete — wake up, Muzzammil!]\x1b[0m",
-        ]);
-        break;
+      case 'mv':
+      case 'cp': {
+        if (!args[0] || !args[1]) return out(`${name}: missing operand`, 'error');
+        const src = fs.getNodeByPath(resolvePath(args[0]));
+        if (!src) return out(`${name}: '${args[0]}': No such file or directory`, 'error');
+        const destParent = fs.getNodeByPath(resolvePath(args[1]).split('/').slice(0, -1).join('/') || '/');
+        if (!destParent) return out(`${name}: destination not found`, 'error');
+        if (name === 'mv') {
+          fs.renameNode(src.id, args[1].split('/').pop() || src.name);
+          fs.moveNode(src.id, destParent.id);
+        } else {
+          fs.createFile(destParent.id, args[1].split('/').pop() || src.name, src.content || '');
+        }
+        return out('');
+      }
 
-      case "sl":
-        addOutput([
-          "     ====        ________                ___________    ",
-          " _D _|  |_______/        \\__I_I_____===__|_________|   ",
-          "  |(_)---  |   H\\________/ |   |        =|___ ___|     ",
-          "  /     |  |   H  |  |     |   |         ||_| |_||     ",
-          " |      |  |   H  |__--------------------| [___] |     ",
-          " | ________|___H__/__|_____/[][]~\\_______|       |    ",
-          " |/ |   |-----------I_____I [][] []  D   |=======|__  ",
-          "__/ =| o |=-~~\\  /~~\\  /~~\\  /~~\\ ____Y___________|__  ",
-          " |/-=|___|=O=====O=====O=====O|_____/~\\___/  (choo choo!)",
-          "  \\_/      \\__/  \\__/  \\__/  \\__/       \\_\\_",
-        ]);
-        break;
+      case 'find': {
+        if (!args[0]) return out('find: missing name', 'error');
+        const results = Object.values(fs.nodes).filter((n) => n.name.includes(args[0]));
+        return out(results.length ? results.map((n) => fs.getPath(n.id)).join('\n') : 'No matches found', 'info');
+      }
+
+      case 'grep': {
+        if (!args[0] || !args[1]) return out('grep: usage: grep <pattern> <file>', 'error');
+        const node = fs.getNodeByPath(resolvePath(args[1]));
+        if (!node || node.type === 'folder') return out(`grep: ${args[1]}: Not a file`, 'error');
+        const lines = (node.content || '').split('\n').filter((l) => l.includes(args[0]));
+        return out(lines.length ? lines.join('\n') : `grep: no matches for '${args[0]}'`, lines.length ? 'output' : 'info');
+      }
+
+      case 'head':
+      case 'tail': {
+        if (!args[0]) return out(`${name}: missing file operand`, 'error');
+        const node = fs.getNodeByPath(resolvePath(args[0]));
+        if (!node || node.type === 'folder') return out(`${name}: not a file`, 'error');
+        const lines = (node.content || '').split('\n');
+        return out((name === 'head' ? lines.slice(0, 10) : lines.slice(-10)).join('\n'));
+      }
+
+      case 'wc': {
+        if (!args[0]) return out('wc: missing operand', 'error');
+        const node = fs.getNodeByPath(resolvePath(args[0]));
+        if (!node || node.type === 'folder') return out('wc: not a file', 'error');
+        const content = node.content || '';
+        const lines = content.split('\n').length;
+        const words = content.split(/\s+/).filter(Boolean).length;
+        const chars = content.length;
+        return out(`  ${lines}  ${words}  ${chars} ${args[0]}`);
+      }
+
+      case 'history':
+        return out(cmdHistory.map((c, i) => `  ${i + 1}  ${c}`).join('\n') || 'No history', 'info');
+
+      case 'df':
+        return out(['Filesystem     Size   Used  Avail  Use%  Mounted on',
+          '/dev/virtual   50G    4.2G  45.8G   9%   /',
+          'tmpfs          2.0G   0     2.0G    0%   /tmp',
+        ].join('\n'));
+
+      case 'free':
+        return out(['              total        used        free',
+          `Mem:        ${(8 * 1024).toLocaleString()}       ${Math.floor(Math.random() * 3000 + 1000).toLocaleString()}      ${Math.floor(Math.random() * 4000 + 3000).toLocaleString()}`,
+          `Swap:       ${(2 * 1024).toLocaleString()}         0      ${(2 * 1024).toLocaleString()}`,
+        ].join('\n'));
+
+      case 'ps':
+        return out(['PID    TTY     TIME     CMD',
+          '  1    pts/0   00:00:00 systemd',
+          '  2    pts/0   00:00:00 bash',
+          '  3    pts/0   00:00:00 node',
+          ' 42    pts/0   00:00:01 weblinux-desktop',
+          `${Math.floor(Math.random() * 900 + 100)}    pts/0   00:00:00 terminal`,
+        ].join('\n'));
+
+      case 'env':
+        return out([`USER=${auth.userName.toLowerCase()}`, 'HOME=/home/user', `PATH=/usr/local/bin:/usr/bin:/bin`, 'SHELL=/bin/bash', `TERM=xterm-256color`, `DISPLAY=:0`, `LANG=en_US.UTF-8`].join('\n'));
+
+      case 'which':
+        return args[0] ? out(`/usr/bin/${args[0]}`) : out('which: missing argument', 'error');
+
+      case 'man':
+        return args[0] ? out(`No manual entry for ${args[0]} — try 'help'`, 'info') : out('man: what manual page?', 'error');
+
+      case 'open': {
+        const appMap: Record<string, string> = {
+          terminal: 'terminal', files: 'filemanager', editor: 'texteditor', browser: 'browser',
+          settings: 'settings', notes: 'notes', todo: 'todo', calc: 'calculator',
+          calendar: 'calendar', chat: 'chat', code: 'codeeditor',
+        };
+        const appId = appMap[args[0]] || args[0];
+        openWindow(appId);
+        return out(`Opening ${args[0]}...`, 'success');
+      }
+
+      case 'calc': {
+        if (!args[0]) return out('calc: usage: calc <expression>', 'error');
+        try {
+          const expr = args.join(' ').replace(/[^0-9+\-*/().\s%]/g, '');
+          // eslint-disable-next-line no-eval
+          const result = Function(`"use strict"; return (${expr})`)();
+          return out(`${args.join(' ')} = ${result}`, 'success');
+        } catch { return out('calc: invalid expression', 'error'); }
+      }
+
+      case 'base64': {
+        const text = args.join(' ');
+        return out(btoa(text), 'success');
+      }
+
+      case 'md5':
+        return out(`${Math.random().toString(16).slice(2).repeat(4).slice(0, 32)}  ${args.join(' ')}`, 'success');
+
+      case 'curl':
+        return out(`Simulated HTTP GET ${args[0] || 'http://localhost'}\n200 OK\nContent-Type: application/json\n\n{"status":"ok","simulated":true}`, 'info');
+
+      case 'ping': {
+        const host = args[0] || 'localhost';
+        const lines = Array.from({ length: 4 }, (_, i) => `64 bytes from ${host}: icmp_seq=${i + 1} ttl=64 time=${(Math.random() * 30 + 2).toFixed(1)} ms`);
+        return out(['PING ' + host, ...lines, `\n--- ${host} ping statistics ---`, `4 packets transmitted, 4 received, 0% packet loss`].join('\n'), 'info');
+      }
+
+      case 'neofetch': {
+        const art = [
+          '        _     ',
+          '   /\\__/\\    ',
+          '  /`    \'\\   ',
+          ' |  0  0  |  ',
+          ' \\  --  /   ',
+          '  |      |   ',
+        ];
+        const info = [
+          `\x1b[35mOS\x1b[0m: WebLinuxOS 2.0`,
+          `\x1b[35mKernel\x1b[0m: 6.8.0-webos`,
+          `\x1b[35mShell\x1b[0m: wlsh 2.0`,
+          `\x1b[35mUser\x1b[0m: ${auth.userName}`,
+          `\x1b[35mResolution\x1b[0m: ${window.innerWidth}x${window.innerHeight}`,
+          `\x1b[35mTheme\x1b[0m: Catppuccin Mocha`,
+          `\x1b[35mMemory\x1b[0m: ${Math.floor(Math.random() * 2048 + 512)}MiB / 8192MiB`,
+        ];
+        const lines = art.map((a, i) => a + '  ' + (info[i] || ''));
+        return out(lines.join('\n'), 'info');
+      }
+
+      case '':
+        return out('');
 
       default:
-        addOutput([`bash: ${command}: command not found`, `Type 'help' to see available commands.`], "error");
+        return out(`${name}: command not found. Type 'help' for available commands.`, 'error');
     }
-  };
+  }, [fs, auth, openWindow, resolvePath, cmdHistory]);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      const cmd = input.trim();
-      if (cmd) setCmdHistory((prev) => [cmd, ...prev]);
-      processCommand(input);
-      setInput("");
-      setHistoryIdx(-1);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      const newIdx = Math.min(historyIdx + 1, cmdHistory.length - 1);
-      setHistoryIdx(newIdx);
-      setInput(cmdHistory[newIdx] || "");
-    } else if (e.key === "ArrowDown") {
-      e.preventDefault();
-      const newIdx = Math.max(historyIdx - 1, -1);
-      setHistoryIdx(newIdx);
-      setInput(newIdx === -1 ? "" : cmdHistory[newIdx]);
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      // Basic tab completion
-      const cmds = ["help", "about", "skills", "projects", "education", "contact", "ls", "cd", "pwd", "cat", "echo", "whoami", "neofetch", "clear", "history", "git", "node", "python3"];
-      const match = cmds.find((c) => c.startsWith(input));
-      if (match) setInput(match);
-    } else if (e.key === "l" && e.ctrlKey) {
-      setHistory([]);
+  const handleSubmit = useCallback(() => {
+    if (!input.trim() && input !== '') { setInput(''); return; }
+    const entry = run(input);
+    if (input.trim() && input !== 'clear') {
+      setCmdHistory((prev) => [input, ...prev].slice(0, 100));
     }
+    if (input !== 'clear') setHistory((prev) => [...prev, entry]);
+    setInput('');
+    setCmdIdx(-1);
+  }, [input, run]);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { handleSubmit(); return; }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const idx = Math.min(cmdIdx + 1, cmdHistory.length - 1);
+      setCmdIdx(idx);
+      setInput(cmdHistory[idx] || '');
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const idx = Math.max(cmdIdx - 1, -1);
+      setCmdIdx(idx);
+      setInput(idx === -1 ? '' : cmdHistory[idx] || '');
+    }
+    if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      setHistory([{ input: '', output: BANNER, type: 'info' }]);
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      // Tab completion
+      const parts = input.split(' ');
+      const last = parts[parts.length - 1];
+      if (last) {
+        const node = fs.getNodeByPath(fs.currentPath);
+        if (node) {
+          const children = fs.getChildren(node.id).filter((c) => c.name.startsWith(last));
+          if (children.length === 1) {
+            parts[parts.length - 1] = children[0].name + (children[0].type === 'folder' ? '/' : '');
+            setInput(parts.join(' '));
+          }
+        }
+      }
+    }
+  }, [input, cmdIdx, cmdHistory, handleSubmit, fs]);
+
+  const renderLine = (line: string, idx: number) => {
+    const colored = line
+      .replace(/\x1b\[(\d+)m/g, (_, code) => {
+        const map: Record<string, string> = { '0': '</span>', '32': '<span style="color:#22c55e">', '34': '<span style="color:#60a5fa">', '35': '<span style="color:#a78bfa">', '36': '<span style="color:#22d3ee">' };
+        return map[code] || '';
+      });
+    return <span key={idx} dangerouslySetInnerHTML={{ __html: colored || '&ZeroWidthSpace;' }} />;
   };
 
   return (
     <div
-      className="h-full flex flex-col overflow-hidden"
-      style={{ background: "#300A24", fontFamily: "'Ubuntu Mono', 'Courier New', monospace", fontSize: 14 }}
+      className="w-full h-full flex flex-col font-mono-terminal text-sm"
+      style={{ background: '#0d0d16', color: '#e2e8f0' }}
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Menu bar */}
-      <div className="flex items-center gap-4 px-4 py-1.5 text-xs text-white/50 border-b border-white/10"
-        style={{ background: "rgba(0,0,0,0.3)" }}>
-        <span className="hover:text-white cursor-pointer">File</span>
-        <span className="hover:text-white cursor-pointer">Edit</span>
-        <span className="hover:text-white cursor-pointer">View</span>
-        <span className="hover:text-white cursor-pointer">Terminal</span>
-        <span className="hover:text-white cursor-pointer">Help</span>
-      </div>
-
-      {/* Terminal output */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
-        {history.map((line, i) => (
-          <div key={i} className="leading-5">
-            {line.type === "input" ? (
-              <span className="text-green-400">{line.content}</span>
-            ) : line.type === "error" ? (
-              <span className="text-red-400">{line.content}</span>
-            ) : line.type === "info" ? (
-              <span className="text-blue-300">{line.content}</span>
-            ) : (
-              <span className="text-gray-200">{line.content}</span>
+      <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        {history.map((entry, i) => (
+          <div key={i}>
+            {entry.input && (
+              <div className="flex gap-2">
+                <span style={{ color: '#a78bfa' }}>{auth.userName.toLowerCase()}@weblinux</span>
+                <span style={{ color: '#60a5fa' }}>{fs.currentPath}</span>
+                <span style={{ color: '#94a3b8' }}>$</span>
+                <span style={{ color: '#f1f5f9' }}>{entry.input}</span>
+              </div>
+            )}
+            {entry.output && (
+              <pre
+                className="whitespace-pre-wrap break-words"
+                style={{ color: entry.type === 'error' ? '#f87171' : entry.type === 'success' ? '#4ade80' : entry.type === 'info' ? '#94a3b8' : '#e2e8f0' }}
+              >
+                {entry.output.split('\n').map(renderLine)}
+              </pre>
             )}
           </div>
         ))}
 
-        {/* Input line */}
-        <div className="flex items-center">
-          <span className="text-green-400 mr-1 flex-shrink-0">{prompt}</span>
+        {/* Current prompt */}
+        <div className="flex gap-2 items-center">
+          <span style={{ color: '#a78bfa' }}>{auth.userName.toLowerCase()}@weblinux</span>
+          <span style={{ color: '#60a5fa' }}>{fs.currentPath}</span>
+          <span style={{ color: '#94a3b8' }}>$</span>
           <input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent text-white outline-none caret-white text-sm"
-            style={{ fontFamily: "inherit", fontSize: "inherit" }}
-            autoFocus
+            className="flex-1 bg-transparent outline-none border-none text-white"
+            style={{ caretColor: '#a78bfa', color: '#f1f5f9' }}
             spellCheck={false}
             autoComplete="off"
           />

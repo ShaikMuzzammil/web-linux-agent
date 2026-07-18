@@ -1,67 +1,150 @@
-<div align="center">
-  <img src="public/wallpapers/ubuntu-dark.svg" alt="WebLinuxOS" width="80" height="80" style="border-radius:20px"/>
+# WebLinuxOS v2.0 — Cloud Desktop
 
-  # WebLinuxOS v2.0
+> A full browser-based Ubuntu-style cloud desktop built with Next.js 15, Neon PostgreSQL, NextAuth v5, Tailwind CSS, and Zustand.
 
-  **A browser-based Ubuntu-style cloud desktop environment**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
 
-  [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
-  ![Next.js](https://img.shields.io/badge/Next.js-15-black)
-  ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-  ![Prisma](https://img.shields.io/badge/Prisma-ORM-green)
-</div>
+---
+
+## 🖥️ What Is This?
+
+WebLinuxOS is a fully functional desktop operating system running entirely in the browser — no installs, no downloads. Everything syncs to the cloud via Neon PostgreSQL.
+
+**54 built-in apps** across 7 categories: System, Productivity, Internet, Media, Games, DevTools, and Creative.
 
 ---
 
 ## ✨ Features
 
-- 🖥️ **Full Desktop Shell** — TopPanel, Dock with magnification, Window Manager, App Launcher, Context Menus
-- 🌐 **54 Working Apps** — Browser with proxy, Calendar (Month/Week/Agenda), Clock (World/Alarm/Stopwatch/Timer), real Weather, Terminal (35+ commands), and more
-- 🎨 **7 SVG Wallpapers** — Aurora, Nebula, Cyberpunk, Mountain, Ocean, Ubuntu Dark, Default
-- ☁️ **Cloud Sync** — Notes, Todos, Calendar, Contacts, Settings synced to Neon PostgreSQL
-- 🔒 **Pure Auth** — Credentials only (email + password). No OAuth.
-- 🌙 **Dark/Light Mode** — System-wide theme toggle
+### OS Shell
+- **Boot sequence** — animated 4-step loader (Kernel → Services → Desktop → Cloud sync)
+- **Login screen** — email/password register + sign in, with guest mode
+- **Top panel** — real-time clock, interactive volume/WiFi/battery popups, theme toggle, user menu
+- **Dock** — macOS-style with magnification effect, hover tooltips, right-click menus
+- **App launcher** — searchable grid with categories, recent apps, keyboard navigation (ESC/Enter)
+- **Window manager** — drag, resize, minimize, maximize, multi-window, focus management
+- **Context menus** — right-click on desktop and dock icons
+- **Notifications** — toast system + notification center
+- **7 wallpapers** — SVG-based: Aurora, Nebula, Cyberpunk, Mountain, Ocean, Ubuntu Dark, Default
 
-## 🚀 Quick Deploy
+### Cloud Sync (10 API routes)
+- Files, Notes, Todo tasks, Contacts, Passwords, Reminders, Calendar events, Settings, Preferences, Auth
 
-### 1. Clone & Push
+### Apps Highlights
+| App | Feature |
+|-----|---------|
+| **Browser** | Proxy-based (strips X-Frame-Options), tabs, bookmarks sidebar, history, speed dial new tab |
+| **Terminal** | 35+ real commands: ls, cd, mkdir, touch, cat, echo, curl, nano, ping, htop, git… |
+| **Calendar** | Month / Week / Agenda views, CRUD events with color tags, location, time |
+| **Weather** | Open-Meteo API (free/no key) — geocoding + 7-day forecast + hourly |
+| **Chat** | Claude AI-powered |
+| **Code Editor** | Syntax highlighting, multi-file tabs |
+| **System Monitor** | Live CPU/memory/disk/network charts |
+| **Games** | Chess (AI), Snake, Tetris, Minesweeper, Sudoku, 2048, Pong, Solitaire, Flappy Bird… |
+
+---
+
+## 🚀 Deploy to Vercel (5 minutes)
+
+### 1. Environment Variables
+
+In Vercel → Settings → Environment Variables, add:
+
+```env
+DATABASE_URL=postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require&pgbouncer=true
+DIRECT_URL=postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
+NEXTAUTH_SECRET=your-32-char-secret-here
+NEXTAUTH_URL=https://your-app.vercel.app
+```
+
+> **Get secrets:** Run `openssl rand -base64 32` for `NEXTAUTH_SECRET`
+
+### 2. Database
+
+Get a free Neon DB at [neon.tech](https://neon.tech):
+- Copy **Connection string** → `DATABASE_URL` (pooled URL)
+- Copy **Direct URL** → `DIRECT_URL`
+
+### 3. Push to GitHub → Vercel auto-deploys
+
 ```bash
-git clone https://github.com/ShaikMuzzammil/web-linux-agent
-cd web-linux-agent
-# Extract zip files and overwrite
 git add -A
-git commit -m "v3 upgrade"
+git commit -m "feat: WebLinuxOS v2.0"
 git push origin main
 ```
 
-### 2. Set Vercel Environment Variables
+The build command runs automatically:
 ```
-DATABASE_URL      = <Neon pooled connection string>
-DIRECT_URL        = <Neon direct connection string>
-NEXTAUTH_SECRET   = <run: openssl rand -base64 32>
-NEXTAUTH_URL      = https://your-app.vercel.app
+prisma generate && prisma db push --accept-data-loss && next build
 ```
 
-### 3. Done!
-Vercel auto-runs `prisma db push && prisma generate && next build`
+This creates all DB tables on every deploy — no manual migration needed.
 
 ---
 
-## 🗂️ Stack
+## 🛠️ Local Development
+
+```bash
+# 1. Install
+npm install
+
+# 2. Copy env
+cp .env.example .env.local
+# Fill in your DATABASE_URL, DIRECT_URL, NEXTAUTH_SECRET, NEXTAUTH_URL=http://localhost:3000
+
+# 3. Push DB schema
+npx prisma db push
+
+# 4. Run
+npm run dev
+```
+
+---
+
+## 📁 Project Structure
+
+```
+/app
+  /api
+    /auth        — NextAuth credentials provider
+    /proxy       — Browser proxy (strips X-Frame-Options)
+    /sync        — 9 cloud sync endpoints (notes, todos, events…)
+    /user        — User preferences
+    /chat        — AI chat (Claude)
+  /page.tsx      — Root: boot → login → desktop
+/components
+  /os            — OS shell (TopPanel, Dock, WindowFrame, AppLauncher…)
+  /apps          — 54 apps
+  /desktop       — Desktop + wallpaper
+/hooks
+  /useOSStore.ts — Zustand global state
+/prisma
+  /schema.prisma — DB schema
+/public
+  /wallpapers    — 7 SVG wallpapers
+/styles
+  /globals.css   — All animations & global styles
+```
+
+---
+
+## 🔑 Tech Stack
 
 | Layer | Tech |
 |-------|------|
-| Frontend | Next.js 15, React, Tailwind CSS |
+| Framework | Next.js 15 (App Router) |
+| Styling | Tailwind CSS 4 |
 | State | Zustand |
-| Database | Neon PostgreSQL + Prisma |
-| Auth | NextAuth.js v5 |
-| Weather API | Open-Meteo (free, no key) |
-| Deploy | Vercel |
-
-## 📁 Documentation
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Full code map
-- [`docs/APPS.md`](docs/APPS.md) — All 54 apps described
+| Database | Neon PostgreSQL |
+| ORM | Prisma |
+| Auth | NextAuth v5 (credentials) |
+| Icons | Lucide React |
+| Date utils | date-fns |
+| AI | Anthropic Claude |
+| Hosting | Vercel |
 
 ---
 
-*Built by [ShaikMuzzammil](https://github.com/ShaikMuzzammil)*
+## 📝 License
+
+MIT — Build, fork, and ship freely.

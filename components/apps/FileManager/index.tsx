@@ -5,7 +5,14 @@ import { useFileSystem } from '@/hooks/useFileSystem';
 import { useOSStore } from '@/hooks/useOSStore';
 import type { FileSystemNode } from '@/types';
 import { formatBytes } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format as _dfFormat } from 'date-fns';
+const format = (d: Date | number | string, fmt: string): string => {
+  try {
+    const dt = typeof d === 'string' ? new Date(d) : typeof d === 'number' ? new Date(d) : d;
+    if (!dt || isNaN(dt.getTime())) return '—';
+    return _dfFormat(dt, fmt);
+  } catch { return '—'; }
+};
 
 type ViewMode = 'grid' | 'list';
 type SortBy = 'name' | 'date' | 'size' | 'type';

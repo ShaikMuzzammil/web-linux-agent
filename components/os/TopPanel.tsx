@@ -8,7 +8,15 @@ import {
 } from 'lucide-react';
 import { useOSStore } from '@/hooks/useOSStore';
 import { signOut } from 'next-auth/react';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+
+const safeFormat = (date: Date | number, fmt: string): string => {
+  try {
+    const d = typeof date === 'number' ? new Date(date) : date;
+    if (!d || !isValid(d)) return '--';
+    return format(d, fmt);
+  } catch { return '--'; }
+};
 
 // ─── Battery Hook ───────────────────────────────────────────
 function useBattery() {
@@ -127,8 +135,8 @@ export default memo(function TopPanel() {
       <button
         className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-opacity"
         onClick={() => toggle('clock')}>
-        <span className="opacity-60">{format(time, 'EEE MMM d')}</span>
-        <span className="font-mono font-bold" style={{ color: theme.accent }}>{format(time, 'HH:mm:ss')}</span>
+        <span className="opacity-60">{safeFormat(time, 'EEE MMM d')}</span>
+        <span className="font-mono font-bold" style={{ color: theme.accent }}>{safeFormat(time, 'HH:mm:ss')}</span>
       </button>
 
       {/* Right — System tray */}
@@ -357,8 +365,8 @@ export default memo(function TopPanel() {
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-[1100] rounded-xl overflow-hidden"
           style={{ background: 'rgba(14,14,24,0.97)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)', minWidth: 200 }}>
           <div className="p-4 text-center">
-            <div className="text-3xl font-mono font-bold" style={{ color: theme.accent }}>{format(time, 'HH:mm:ss')}</div>
-            <div className="text-sm opacity-60 mt-1">{format(time, 'EEEE, MMMM d yyyy')}</div>
+            <div className="text-3xl font-mono font-bold" style={{ color: theme.accent }}>{safeFormat(time, 'HH:mm:ss')}</div>
+            <div className="text-sm opacity-60 mt-1">{safeFormat(time, 'EEEE, MMMM d yyyy')}</div>
           </div>
           <div className="border-t border-white/06 p-2">
             <button onClick={() => { openWindow('clock'); setActivePopup(null); }} className="w-full text-xs opacity-40 hover:opacity-70 py-1">Open Clock app</button>

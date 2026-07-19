@@ -1,5 +1,5 @@
 // ============================================================
-// App.tsx — Main UbuntuOS Shell
+// App.tsx — Main WebLinuxOS Shell (error-safe)
 // ============================================================
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -14,110 +14,144 @@ import WindowManager from '@/components/WindowManager';
 import ContextMenu from '@/components/ContextMenu';
 import NotificationSystem from '@/components/NotificationSystem';
 import NotificationCenter from '@/components/NotificationCenter';
+import './App.css';
 
+// ---- Alt-Tab Overlay ----
+function AltTabOverlay() {
+  const { state } = useOS();
+  if (!state.isAltTabbing) return null;
+  const visible = state.windows.filter(w => w.state !== 'minimized');
+
+  return (
+    <div
+      className="fixed inset-0 z-[5000] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}
+    >
+      <div
+        className="flex items-center gap-2 px-5 py-4 rounded-2xl"
+        style={{
+          background: 'rgba(28,28,28,0.94)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+          animation: 'scaleIn 150ms ease',
+        }}
+      >
+        {visible.map((w, i) => {
+          const isSelected = i === state.altTabIndex;
+          return (
+            <div
+              key={w.id}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all"
+              style={{
+                background: isSelected ? 'rgba(124,77,255,0.2)' : 'transparent',
+                border: isSelected ? '1.5px solid rgba(124,77,255,0.6)' : '1.5px solid transparent',
+                minWidth: 80,
+              }}
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+              >
+                {w.appId === 'terminal' ? '⌨️' :
+                 w.appId === 'browser' ? '🌐' :
+                 w.appId === 'filemanager' ? '📁' :
+                 w.appId === 'settings' ? '⚙️' :
+                 w.appId === 'calendar' ? '📅' :
+                 w.appId === 'chat' ? '💬' :
+                 w.appId === 'weather' ? '🌤️' :
+                 w.appId === 'codeeditor' ? '💻' : '📱'}
+              </div>
+              <span
+                className="text-[10px] font-medium text-center"
+                style={{
+                  color: isSelected ? '#E0E0E0' : '#9E9E9E',
+                  maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}
+              >
+                {w.title}
+              </span>
+            </div>
+          );
+        })}
+        {visible.length === 0 && (
+          <p className="text-xs text-white/40 px-4">No open windows</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- Main App Shell ----
 function AppShell() {
   const { state, dispatch } = useOS();
   const { bootPhase, auth } = state;
   const [bootComplete, setBootComplete] = useState(false);
-  const altTabRef = useRef<{ holding: boolean }>({ holding: false });
+  const altHeld = useRef(false);
 
-  // Boot sequence
+  // Kick off boot
   useEffect(() => {
-    if (bootPhase === 'off') {
-      dispatch({ type: 'SET_BOOT_PHASE', phase: 'logo' });
-    }
-  }, [bootPhase, dispatch]);
-
-  const handleBootComplete = useCallback(() => {
-    setBootComplete(true);
+    if (bootPhase === 'off') dispatch({ type: 'SET_BOOT_PHASE', phase: 'logo' });
   }, []);
 
-  // Keyboard shortcuts
+  const handleBootComplete = useCallback(() => setBootComplete(true), []);
+
+  // Global keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Super key toggles app launcher
+    const onDown = (e: KeyboardEvent) => {
       if (e.key === 'Meta' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
         dispatch({ type: 'TOGGLE_APP_LAUNCHER' });
         return;
       }
-
-      // Ctrl+Alt+T opens Terminal
       if (e.ctrlKey && e.altKey && e.key === 't') {
         e.preventDefault();
         dispatch({ type: 'OPEN_WINDOW', appId: 'terminal' });
         return;
       }
-
-      // Super+D minimize all
-      if ((e.metaKey || e.key === 'Meta') && e.key === 'd') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
         e.preventDefault();
         dispatch({ type: 'MINIMIZE_ALL' });
         return;
       }
-
-      // Alt+Tab window switching
-      if (e.key === 'Alt') {
-        altTabRef.current.holding = true;
-      }
+      if (e.key === 'Alt') altHeld.current = true;
       if (e.key === 'Tab' && e.altKey) {
         e.preventDefault();
-        if (!state.isAltTabbing) {
-          dispatch({ type: 'START_ALT_TAB' });
-        } else {
-          dispatch({ type: 'CYCLE_ALT_TAB' });
-        }
+        if (!state.isAltTabbing) dispatch({ type: 'START_ALT_TAB' });
+        else dispatch({ type: 'CYCLE_ALT_TAB' });
+        return;
       }
-
-      // Escape closes app launcher
       if (e.key === 'Escape') {
-        if (state.appLauncherOpen) {
-          dispatch({ type: 'SET_APP_LAUNCHER', open: false });
-        }
-        if (state.notificationCenterOpen) {
-          dispatch({ type: 'TOGGLE_NOTIFICATION_CENTER' });
-        }
+        if (state.appLauncherOpen) dispatch({ type: 'SET_APP_LAUNCHER', open: false });
+        if (state.notificationCenterOpen) dispatch({ type: 'TOGGLE_NOTIFICATION_CENTER' });
+        if (state.contextMenu.visible) dispatch({ type: 'HIDE_CONTEXT_MENU' });
       }
-
-      // Ctrl+W closes active window
       if (e.ctrlKey && e.key === 'w' && state.activeWindowId) {
         e.preventDefault();
         dispatch({ type: 'CLOSE_WINDOW', windowId: state.activeWindowId });
       }
     };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
+    const onUp = (e: KeyboardEvent) => {
       if (e.key === 'Alt' && state.isAltTabbing) {
         dispatch({ type: 'END_ALT_TAB' });
-        altTabRef.current.holding = false;
+        altHeld.current = false;
       }
     };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
+  }, [dispatch, state.appLauncherOpen, state.notificationCenterOpen, state.isAltTabbing, state.activeWindowId, state.contextMenu.visible]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [dispatch, state.appLauncherOpen, state.notificationCenterOpen, state.isAltTabbing, state.activeWindowId]);
-
-  // Determine what to render
-  const showBoot = bootPhase !== 'complete' && !bootComplete;
-  const showLogin = bootComplete && !auth.isAuthenticated;
+  const showBoot    = bootPhase !== 'complete' && !bootComplete;
+  const showLogin   = bootComplete && !auth.isAuthenticated;
   const showDesktop = bootComplete && auth.isAuthenticated;
 
   return (
     <div className={state.theme.mode === 'light' ? 'light' : ''} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      {/* Boot Sequence */}
       {showBoot && <BootSequence onComplete={handleBootComplete} />}
-
-      {/* Login Screen */}
       {showLogin && <LoginScreen />}
-
-      {/* Desktop Shell */}
       {showDesktop && (
         <div className="relative w-full h-full" style={{ background: 'var(--bg-desktop)' }}>
-          {/* Wallpaper layer */}
+          {/* Wallpaper */}
           <div
             className="absolute inset-0"
             style={{
@@ -127,88 +161,19 @@ function AppShell() {
               zIndex: 0,
             }}
           />
-
-          {/* Desktop Icons layer */}
+          {/* Desktop icons */}
           <Desktop />
-
-          {/* Windows layer */}
+          {/* Windows */}
           <WindowManager />
-
-          {/* Top panel */}
+          {/* UI shell */}
           <TopPanel />
-
-          {/* Dock */}
           <Dock />
-
           {/* Overlays */}
           <AppLauncher />
           <ContextMenu />
           <NotificationSystem />
           <NotificationCenter />
-
-          {/* Alt+Tab switcher */}
-          {state.isAltTabbing && (
-            <div
-              className="fixed inset-0 z-[5000] flex items-center justify-center pointer-events-none"
-              style={{ background: 'rgba(0,0,0,0.3)' }}
-            >
-              <div
-                className="flex items-center gap-3 px-6 py-4 rounded-2xl pointer-events-auto"
-                style={{
-                  background: 'rgba(30,30,30,0.9)',
-                  backdropFilter: 'blur(16px)',
-                  animation: 'alttabAppear 150ms ease',
-                }}
-              >
-                {state.windows
-                  .filter((w) => w.state !== 'minimized')
-                  .map((w, i) => {
-                    const app = state.apps.find((a) => a.id === w.appId);
-                    const isSelected = i === state.altTabIndex;
-                    return (
-                      <div
-                        key={w.id}
-                        className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all"
-                        style={{
-                          background: isSelected ? 'var(--bg-hover)' : 'transparent',
-                          border: isSelected ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                          width: 80,
-                        }}
-                      >
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                          style={{ background: 'var(--bg-hover)' }}>
-                          {app?.icon && (
-                            <img
-                              src={`data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%237C4DFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>`}
-                              alt=""
-                              className="w-6 h-6 opacity-0"
-                            />
-                          )}
-                          <span className="text-xl absolute">{app?.icon === 'Folder' && '📁'}</span>
-                          <span className="text-xl absolute">{app?.icon === 'Terminal' && '⌨'}</span>
-                          <span className="text-xl absolute">{app?.icon === 'Globe' && '🌐'}</span>
-                          <span className="text-xl absolute">{app?.icon === 'Settings' && '⚙'}</span>
-                          <span className="text-xl absolute">{app?.icon === 'FileText' && '📄'}</span>
-                          <span className="text-xl absolute">
-                            {!['Folder', 'Terminal', 'Globe', 'Settings', 'FileText'].includes(app?.icon || '') && '📱'}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-[var(--text-primary)] text-center truncate max-w-[64px]">
-                          {w.title}
-                        </span>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
-
-          <style>{`
-            @keyframes alttabAppear {
-              from { opacity: 0; transform: scale(0.9); }
-              to { opacity: 1; transform: scale(1); }
-            }
-          `}</style>
+          <AltTabOverlay />
         </div>
       )}
     </div>

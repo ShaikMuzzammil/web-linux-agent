@@ -58,10 +58,10 @@ export default function Calendar({ windowId }: { windowId: string }) {
         title: existing.title,
         color: existing.color || '#7C4DFF',
         allDay: existing.allDay ?? true,
-        startDate: format(new Date(existing.startDate), 'yyyy-MM-dd'),
-        startTime: format(new Date(existing.startDate), 'HH:mm'),
-        endDate: format(new Date(existing.endDate || existing.startDate), 'yyyy-MM-dd'),
-        endTime: format(new Date(existing.endDate || existing.startDate), 'HH:mm'),
+        startDate: safeFormat(existing.startDate, 'yyyy-MM-dd'),
+        startTime: safeFormat(existing.startDate, 'HH:mm'),
+        endDate: safeFormat(existing.endDate || existing.startDate, 'yyyy-MM-dd'),
+        endTime: safeFormat(existing.endDate || existing.startDate, 'HH:mm'),
         location: existing.location || '',
         description: existing.description || '',
       });
@@ -399,8 +399,8 @@ export default function Calendar({ windowId }: { windowId: string }) {
                       {!e.allDay && (
                         <p className="text-[10px] opacity-50 flex items-center gap-1 mt-0.5">
                           <Clock size={9} />
-                          {format(new Date(e.startDate), 'h:mm a')}
-                          {e.endDate && ` – ${format(new Date(e.endDate), 'h:mm a')}`}
+                          {safeFormat(e.startDate, 'h:mm a')}
+                          {e.endDate && ` – ${safeFormat(e.endDate, 'h:mm a')}`}
                         </p>
                       )}
                       {e.location && (
@@ -436,7 +436,7 @@ export default function Calendar({ windowId }: { windowId: string }) {
                   <p className="text-xs font-semibold truncate" style={{ color: e.color }}>{e.title}</p>
                 </div>
                 {!e.allDay && (
-                  <p className="text-[9px] opacity-50 ml-3.5">{format(new Date(e.startDate), 'h:mm a')}</p>
+                  <p className="text-[9px] opacity-50 ml-3.5">{safeFormat(e.startDate, 'h:mm a')}</p>
                 )}
                 {e.location && <p className="text-[9px] opacity-40 ml-3.5 truncate">{e.location}</p>}
               </div>

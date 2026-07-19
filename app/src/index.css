@@ -167,3 +167,86 @@
     100% { background-position: 200% 0; }
   }
 }
+
+/* ============================================================
+   WebLinuxOS v3 — Enhanced Patches
+   ============================================================ */
+
+/* Traffic-light window buttons */
+.traffic-btn {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.12s, transform 0.1s;
+  border: 0.5px solid rgba(0,0,0,0.18);
+}
+.traffic-btn:hover { filter: brightness(1.15); transform: scale(1.12); }
+.traffic-btn:active { transform: scale(0.92); }
+
+/* Window open animation */
+@keyframes windowOpen {
+  from { opacity: 0; transform: scale(0.91) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Snap zone animation */
+@keyframes snapAppear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Window frame focused ring */
+.window-frame.focused {
+  box-shadow: 0 0 0 1px rgba(124,77,255,0.3), 0 20px 60px rgba(0,0,0,0.65);
+}
+
+/* Notification badge pulse */
+@keyframes notifPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+
+/* Dock tooltip */
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Global range input accent */
+input[type="range"] {
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(124,77,255,0.35);
+  color: white;
+}
+
+/* Window title bar drag cursor fix */
+[data-drag-handle] { cursor: grab; }
+[data-drag-handle]:active { cursor: grabbing; }
+
+/* Smooth window animations */
+.window-frame {
+  will-change: transform;
+  animation: windowOpen 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* App grid item */
+.app-grid-item:hover .app-icon-bg {
+  transform: scale(1.08);
+}
+
+/* Taskbar minimized window bounce */
+@keyframes taskbarBounce {
+  0%, 100% { transform: scaleX(1); }
+  50%       { transform: scaleX(1.06); }
+}

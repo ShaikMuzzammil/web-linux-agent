@@ -1,156 +1,166 @@
 // ============================================================
-// BootSequence — 4-phase animated boot
+// BootSequence — Premium animated boot with error safety
 // ============================================================
 
 import { useEffect, useState, memo } from 'react';
 
-const PHASE_LOGO = 0;
-const PHASE_LOADING = 1;
-const PHASE_TRANSITION = 2;
-const PHASE_DESKTOP = 3;
-const PHASE_DONE = 4;
+const PHASES = { LOGO: 0, LOADING: 1, TRANSITION: 2, REVEAL: 3, DONE: 4 };
+
+const LOADING_STEPS = [
+  { at: 0,   text: 'Starting kernel...' },
+  { at: 20,  text: 'Initializing services...' },
+  { at: 45,  text: 'Loading desktop environment...' },
+  { at: 70,  text: 'Mounting file systems...' },
+  { at: 85,  text: 'Preparing desktop...' },
+  { at: 97,  text: 'Almost ready...' },
+];
 
 const BootSequence = memo(function BootSequence({ onComplete }: { onComplete: () => void }) {
-  const [phase, setPhase] = useState<number>(PHASE_LOGO);
+  const [phase, setPhase] = useState(PHASES.LOGO);
   const [progress, setProgress] = useState(0);
-  const [loadingText, setLoadingText] = useState('Loading system...');
+  const [loadingText, setLoadingText] = useState('Starting kernel...');
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    const timers: (ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>)[] = [];
 
-    timers.push(
-      setTimeout(() => {
-        setPhase(PHASE_LOADING);
-      }, 800)
-    );
+    const t1 = setTimeout(() => setPhase(PHASES.LOADING), 600);
+    timers.push(t1);
 
-    timers.push(
-      setTimeout(() => {
-        let p = 0;
-        const interval = setInterval(() => {
-          p += Math.random() * 15 + 5;
-          if (p >= 100) {
-            p = 100;
-            clearInterval(interval);
-          }
-          setProgress(p);
-          if (p > 30) setLoadingText('Initializing services...');
-          if (p > 70) setLoadingText('Preparing desktop...');
-        }, 120);
-        timers.push(interval as unknown as ReturnType<typeof setTimeout>);
-      }, 800)
-    );
+    const t2 = setTimeout(() => {
+      let p = 0;
+      const iv = setInterval(() => {
+        p += Math.random() * 12 + 4;
+        if (p >= 100) { p = 100; clearInterval(iv); }
+        setProgress(Math.min(p, 100));
+        const step = [...LOADING_STEPS].reverse().find(s => p >= s.at);
+        if (step) setLoadingText(step.text);
+      }, 100);
+      timers.push(iv);
+    }, 600);
+    timers.push(t2);
 
-    timers.push(
-      setTimeout(() => {
-        setPhase(PHASE_TRANSITION);
-      }, 2600)
-    );
+    const t3 = setTimeout(() => setPhase(PHASES.TRANSITION), 2400);
+    timers.push(t3);
 
-    timers.push(
-      setTimeout(() => {
-        setPhase(PHASE_DESKTOP);
-      }, 3400)
-    );
+    const t4 = setTimeout(() => setPhase(PHASES.REVEAL), 3100);
+    timers.push(t4);
 
-    timers.push(
-      setTimeout(() => {
-        setPhase(PHASE_DONE);
-        onComplete();
-      }, 4200)
-    );
+    const t5 = setTimeout(() => {
+      setPhase(PHASES.DONE);
+      onComplete();
+    }, 3900);
+    timers.push(t5);
 
-    return () => timers.forEach((t) => clearTimeout(t));
+    return () => timers.forEach(t => {
+      clearTimeout(t as ReturnType<typeof setTimeout>);
+      clearInterval(t as ReturnType<typeof setInterval>);
+    });
   }, [onComplete]);
 
-  if (phase === PHASE_DONE) return null;
+  if (phase === PHASES.DONE) return null;
 
-  const showContent = phase === PHASE_LOGO || phase === PHASE_LOADING || phase === PHASE_TRANSITION;
+  const show = phase === PHASES.LOGO || phase === PHASES.LOADING;
+  const fadeOut = phase === PHASES.TRANSITION;
+  const reveal = phase === PHASES.REVEAL;
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black"
+      className="fixed inset-0 z-[9999] overflow-hidden"
       style={{
-        transition: 'clip-path 800ms cubic-bezier(0, 0, 0.2, 1)',
-        clipPath:
-          phase === PHASE_DESKTOP || phase === PHASE_TRANSITION
-            ? phase === PHASE_DESKTOP
-              ? 'circle(150% at 50% 50%)'
-              : 'circle(0% at 50% 50%)'
-            : undefined,
+        background: reveal ? 'transparent' : '#0A0A0A',
+        transition: reveal ? 'opacity 600ms ease' : undefined,
+        opacity: reveal ? 0 : 1,
       }}
     >
-      {phase === PHASE_TRANSITION && (
+      {/* Wallpaper peek during transition */}
+      {(phase === PHASES.TRANSITION || phase === PHASES.REVEAL) && (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: 'url(/wallpaper-default.jpg)' }}
+          style={{ backgroundImage: 'url(/wallpaper-default.jpg)', opacity: 0.6 }}
         />
       )}
 
-      {showContent && (
+      {/* Boot content */}
+      {(show || fadeOut) && (
         <div
-          className="flex flex-col items-center justify-center relative z-10"
+          className="absolute inset-0 flex flex-col items-center justify-center"
           style={{
-            opacity: phase === PHASE_TRANSITION ? 0 : 1,
-            transition: 'opacity 400ms ease',
+            opacity: fadeOut ? 0 : 1,
+            transform: fadeOut ? 'scale(1.04)' : 'scale(1)',
+            transition: 'opacity 600ms ease, transform 600ms ease',
           }}
         >
+          {/* Logo */}
           <div
-            className="mb-4"
             style={{
-              opacity: phase >= PHASE_LOGO ? 1 : 0,
-              transform: `scale(${phase >= PHASE_LOGO ? 1 : 0.8})`,
-              filter: phase >= PHASE_LOGO ? 'blur(0px)' : 'blur(8px)',
-              transition: 'all 600ms cubic-bezier(0, 0, 0.2, 1)',
-              animation: phase === PHASE_LOADING ? 'pulse 1.6s ease-in-out infinite' : undefined,
+              opacity: phase >= PHASES.LOGO ? 1 : 0,
+              transform: phase >= PHASES.LOGO ? 'scale(1) translateY(0)' : 'scale(0.8) translateY(12px)',
+              transition: 'all 700ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+              marginBottom: 20,
+              animation: phase === PHASES.LOADING ? 'bootPulse 2s ease-in-out infinite' : undefined,
             }}
           >
-            <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="48" cy="48" r="46" fill="#7C4DFF" opacity="0.9" />
-              <circle cx="34" cy="40" r="16" fill="#FF9800" opacity="0.85" />
-              <circle cx="58" cy="56" r="14" fill="#E91E63" opacity="0.7" />
+            {/* Ubuntu-style logo */}
+            <svg width="88" height="88" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="44" cy="44" r="44" fill="#1A1A1A" />
+              <circle cx="44" cy="44" r="38" fill="none" stroke="#E95420" strokeWidth="3.5" opacity="0.9" />
+              {/* Three Ubuntu dots */}
+              <circle cx="44" cy="14" r="8" fill="#E95420" />
+              <circle cx="18" cy="57" r="8" fill="#E95420" />
+              <circle cx="70" cy="57" r="8" fill="#E95420" />
+              {/* Connecting arcs (simplified) */}
+              <line x1="44" y1="22" x2="25" y2="50" stroke="#E95420" strokeWidth="2.5" opacity="0.5" />
+              <line x1="44" y1="22" x2="63" y2="50" stroke="#E95420" strokeWidth="2.5" opacity="0.5" />
+              <line x1="25" y1="57" x2="62" y2="57" stroke="#E95420" strokeWidth="2.5" opacity="0.5" />
             </svg>
           </div>
 
+          {/* Title */}
           <h1
-            className="text-[28px] font-bold tracking-[0.1em] text-[#E0E0E0] mb-6"
             style={{
-              opacity: phase >= PHASE_LOGO ? 1 : 0,
-              transform: `translateY(${phase >= PHASE_LOGO ? 0 : 10}px)`,
-              transition: 'all 400ms cubic-bezier(0, 0, 0.2, 1) 400ms',
+              fontSize: 26,
+              fontWeight: 300,
+              letterSpacing: '0.18em',
+              color: '#E0E0E0',
+              textTransform: 'uppercase',
+              marginBottom: 32,
+              opacity: phase >= PHASES.LOGO ? 1 : 0,
+              transform: phase >= PHASES.LOGO ? 'translateY(0)' : 'translateY(8px)',
+              transition: 'all 500ms ease 300ms',
             }}
           >
-            UbuntuOS
+            WebLinuxOS
           </h1>
 
-          {phase >= PHASE_LOADING && (
-            <div
-              className="w-[200px] h-[3px] rounded-full overflow-hidden mb-3"
-              style={{
-                background: 'rgba(124,77,255,0.2)',
-                opacity: phase >= PHASE_LOADING ? 1 : 0,
-                transition: 'opacity 200ms ease',
-              }}
-            >
+          {/* Progress bar */}
+          {phase >= PHASES.LOADING && (
+            <div style={{ opacity: 1, transition: 'opacity 300ms ease', marginBottom: 12 }}>
               <div
-                className="h-full rounded-full"
                 style={{
-                  width: `${progress}%`,
-                  background: '#7C4DFF',
-                  transition: 'width 100ms linear',
+                  width: 220,
+                  height: 2,
+                  borderRadius: 2,
+                  background: 'rgba(233,84,32,0.2)',
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${progress}%`,
+                    background: 'linear-gradient(90deg, #E95420, #FF8A65)',
+                    borderRadius: 2,
+                    transition: 'width 80ms linear',
+                    boxShadow: '0 0 8px rgba(233,84,32,0.6)',
+                  }}
+                />
+              </div>
             </div>
           )}
 
-          {phase >= PHASE_LOADING && (
-            <p
-              className="text-[10px] text-[#9E9E9E] tracking-wider"
-              style={{
-                opacity: phase >= PHASE_LOADING ? 1 : 0,
-                transition: 'opacity 300ms ease',
-              }}
-            >
+          {/* Loading text */}
+          {phase >= PHASES.LOADING && (
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', fontFamily: 'monospace' }}>
               {loadingText}
             </p>
           )}
@@ -158,9 +168,9 @@ const BootSequence = memo(function BootSequence({ onComplete }: { onComplete: ()
       )}
 
       <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+        @keyframes bootPulse {
+          0%,100% { opacity: 1; filter: drop-shadow(0 0 0px rgba(233,84,32,0)); }
+          50%      { opacity: 0.85; filter: drop-shadow(0 0 12px rgba(233,84,32,0.5)); }
         }
       `}</style>
     </div>

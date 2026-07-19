@@ -91,13 +91,13 @@ const Settings: React.FC = () => {
 
   // Settings state (loaded from localStorage)
   const [settings, setSettings] = useState<Record<string, unknown>>(() => {
-    try { return JSON.parse(localStorage.getItem('ubuntuos_settings') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem('wlos_settings') || '{}'); } catch { return {}; }
   });
 
   const updateSetting = useCallback((key: string, value: unknown) => {
     setSettings(prev => {
       const next = { ...prev, [key]: value };
-      localStorage.setItem('ubuntuos_settings', JSON.stringify(next));
+      localStorage.setItem('wlos_settings', JSON.stringify(next));
       return next;
     });
   }, []);

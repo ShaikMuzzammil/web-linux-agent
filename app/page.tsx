@@ -11,6 +11,7 @@ import WindowManager from '@/components/os/WindowManager';
 import AppLauncher from '@/components/os/AppLauncher';
 import ContextMenu from '@/components/os/ContextMenu';
 import NotificationCenter, { NotificationToasts } from '@/components/os/NotificationCenter';
+import NotificationTrigger from '@/components/os/NotificationTrigger';
 
 export default function OS() {
   const { data: session, status } = useSession();
@@ -100,6 +101,7 @@ export default function OS() {
         <ContextMenu />
         <NotificationCenter />
         <NotificationToasts />
+        <NotificationTrigger />
       </div>
     </div>
   );

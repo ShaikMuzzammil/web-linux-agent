@@ -2,7 +2,15 @@
 import { memo, useEffect, useRef } from 'react';
 import { X, Bell, CheckCheck, AlertCircle, Info, CheckCircle, Trash2 } from 'lucide-react';
 import { useOSStore } from '@/hooks/useOSStore';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+
+const safeFormat = (ts: number | string | Date, fmt: string): string => {
+  try {
+    const d = new Date(ts as number);
+    if (!d || !isValid(d)) return '--';
+    return format(d, fmt);
+  } catch { return '--'; }
+};
 import type { OSNotification } from '@/types';
 
 function NotificationItem({ n, onDismiss, onRead }: { n: OSNotification; onDismiss: () => void; onRead: () => void }) {
@@ -22,7 +30,7 @@ function NotificationItem({ n, onDismiss, onRead }: { n: OSNotification; onDismi
           {!n.isRead && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1" style={{ background: color }} />}
         </div>
         {n.message && <p className="text-[11px] mt-0.5 leading-snug" style={{ opacity: 0.45 }}>{n.message}</p>}
-        <p className="text-[10px] mt-1 opacity-25">{format(n.createdAt, 'h:mm a')}</p>
+        <p className="text-[10px] mt-1 opacity-25">{safeFormat(n.timestamp, 'h:mm a')}</p>
       </div>
       <button onClick={e => { e.stopPropagation(); onDismiss(); }} className="opacity-0 group-hover:opacity-40 hover:!opacity-80 transition-all hover:text-red-400 mt-0.5 flex-shrink-0">
         <X size={11} />
@@ -51,7 +59,7 @@ export default memo(function NotificationCenter() {
   const unread = notifications.filter(n => !n.isRead);
   const groups: Record<string, OSNotification[]> = {};
   notifications.forEach(n => {
-    const key = format(n.createdAt, 'MMM d, yyyy');
+    const key = safeFormat(n.timestamp, 'MMM d, yyyy');
     if (!groups[key]) groups[key] = [];
     groups[key].push(n);
   });
@@ -124,7 +132,7 @@ export default memo(function NotificationCenter() {
 export const NotificationToasts = memo(function NotificationToasts() {
   const { notifications, theme, dismissNotification } = useOSStore();
   const shown = useRef<Set<string>>(new Set());
-  const recent = notifications.filter(n => !n.isRead && Date.now() - n.createdAt < 5000 && !shown.current.has(n.id));
+  const recent = notifications.filter(n => !n.isRead && Date.now() - n.timestamp < 5000 && !shown.current.has(n.id));
 
   recent.forEach(n => shown.current.add(n.id));
   useEffect(() => {

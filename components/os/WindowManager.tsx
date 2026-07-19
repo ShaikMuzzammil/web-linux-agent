@@ -1,5 +1,5 @@
 'use client';
-import { memo, lazy, Suspense } from 'react';
+import { memo, lazy, Suspense, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useOSStore } from '@/hooks/useOSStore';
 import WindowFrame from './WindowFrame';
@@ -72,9 +72,38 @@ function AppFallback() {
 
 export default memo(function WindowManager() {
   const windows = useOSStore((s) => s.windows);
+  const { focusWindow, restoreWindow } = useOSStore();
+
+  const minimized = windows.filter(w => w.state === 'minimized');
 
   return (
     <>
+      {/* Minimized window restore strip */}
+      {minimized.length > 0 && (
+        <div className="fixed z-[190] flex items-center gap-1 px-2" style={{ top: 32, left: 4 }}>
+          {minimized.map(win => (
+            <button
+              key={win.id}
+              onClick={() => { focusWindow(win.id); restoreWindow(win.id); }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all"
+              style={{
+                background: 'rgba(28,28,28,0.9)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                maxWidth: 160,
+              }}
+              title={"Restore: " + win.title}
+            >
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#E95420' }} />
+              <span className="text-[10px] font-medium text-white/70 truncate" style={{ maxWidth: 100 }}>
+                {win.title}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {windows.map((win) => {
         const AppComponent = apps[win.appId];
         return (

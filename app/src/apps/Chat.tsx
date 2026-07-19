@@ -1,44 +1,33 @@
 // ============================================================
-// Chat — Instant messaging with contacts, AI bot, emoji picker
+// Chat — AI-powered chat with WebLinux Assistant (Claude)
 // ============================================================
 
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import {
-  Search, Send, Smile, Circle, Plus, Bot
-} from 'lucide-react';
+import { Send, Smile, Bot, User, Loader2, Trash2, Plus, MessageSquare } from 'lucide-react';
 
 // ---- Types ----
 interface Message {
   id: string;
-  senderId: string;
+  role: 'user' | 'assistant';
   content: string;
   timestamp: number;
-  type: 'text';
 }
 
-interface Conversation {
-  id: string;
-  name: string;
-  avatar: string;
-  status: 'online' | 'away' | 'offline';
-  isBot: boolean;
-  messages: Message[];
-  lastRead?: number;
-}
+const EMOJIS = ['😀','😂','🥰','😎','🤔','👍','❤️','🎉','🔥','👏','😊','✨','💪','🙏','😅','🤩','🥳','😜','🤯','🎵'];
 
-// ---- Emoji Picker ----
-const EMOJIS = ['😀','😂','🥰','😎','🤔','👍','👎','❤️','🎉','🔥','👏','😊','🙌','💯','✨','🎵','🌟','💪','🙏','😅','🤗','😴','😋','🤩','😇','🥳','😷','🤯','🥺','😜'];
-
-const EmojiPicker = memo(function EmojiPicker({ onSelect, onClose }: { onSelect: (emoji: string) => void; onClose: () => void }) {
+const EmojiPicker = memo(function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onClose: () => void }) {
   return (
-    <div className="absolute bottom-14 right-4 z-50 p-3 rounded-xl" style={{ background: 'var(--bg-titlebar)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-lg)', width: 240 }}>
-      <div className="grid grid-cols-6 gap-1">
-        {EMOJIS.map((emoji) => (
+    <div
+      className="absolute bottom-14 right-4 z-50 p-3 rounded-2xl"
+      style={{ background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', width: 220 }}
+    >
+      <div className="grid grid-cols-5 gap-1">
+        {EMOJIS.map(emoji => (
           <button
             key={emoji}
             onClick={() => { onSelect(emoji); onClose(); }}
-            className="flex items-center justify-center p-1.5 rounded hover:bg-[var(--bg-hover)] transition-all"
-            style={{ fontSize: '20px' }}
+            className="flex items-center justify-center p-2 rounded-lg hover:bg-white/[0.08] transition-all"
+            style={{ fontSize: 20 }}
           >
             {emoji}
           </button>
@@ -48,437 +37,285 @@ const EmojiPicker = memo(function EmojiPicker({ onSelect, onClose }: { onSelect:
   );
 });
 
-// ---- AI Bot Responses ----
-const BOT_RESPONSES: Record<string, string> = {
-  hello: 'Hello there! How can I help you today?',
-  hi: 'Hi! I\'m your UbuntuOS Assistant. What can I do for you?',
-  hey: 'Hey! Need any help with something?',
-  help: 'I can help you with:\n- Opening apps\n- System settings\n- File management\n- General questions\n\nJust let me know what you need!',
-  time: `The current time is ${new Date().toLocaleTimeString()}.`,
-  date: `Today is ${new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`,
-  weather: 'I can check the weather for you! Open the Weather app for detailed forecasts.',
-  joke: 'Why do programmers prefer dark mode? Because light attracts bugs! 🐛',
-  thanks: 'You\'re welcome! Let me know if you need anything else.',
-  bye: 'Goodbye! Have a great day! 👋',
-  default: 'That\'s interesting! Tell me more, or ask me about time, date, weather, or jokes.',
-};
-
-const getBotResponse = (input: string): string => {
-  const lower = input.toLowerCase().trim();
-  for (const [key, response] of Object.entries(BOT_RESPONSES)) {
-    if (lower.includes(key)) return response;
+// ---- Claude API call ----
+const callClaude = async (messages: { role: 'user' | 'assistant'; content: string }[]): Promise<string> => {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: `You are WebLinux AI, the built-in assistant of WebLinuxOS — a browser-based Ubuntu-style desktop environment built with React, Vite, and Tailwind CSS. You're friendly, concise, and knowledgeable about Linux, web development, and general computing. The user's name is Nova. Keep responses helpful and conversational. Format code with backticks. When asked about the OS, explain that it's a fully browser-based OS simulation with apps like Terminal, File Manager, Calendar, Weather, Settings, Games, and more. This OS is a showcase portfolio project by Nova (Shaik Muzzammil), a CSE student at Amrita Vishwa Vidyapeetham.`,
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+      }),
+    });
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    return data.content?.[0]?.text || 'Sorry, I could not generate a response.';
+  } catch (err) {
+    // Fallback to local responses
+    return getFallbackResponse(messages[messages.length - 1]?.content || '');
   }
-  return BOT_RESPONSES.default;
 };
 
-// ---- Initial Conversations ----
-const createInitialConversations = (): Conversation[] => [
-  {
-    id: 'bot', name: 'OS Assistant', avatar: 'bot', status: 'online', isBot: true,
-    messages: [
-      { id: '1', senderId: 'bot', content: 'Hello! I\'m your UbuntuOS Assistant. I can help you with various tasks. Try asking me about the time, weather, or just say hello!', timestamp: Date.now() - 3600000, type: 'text' },
-    ],
-  },
-  {
-    id: 'alice', name: 'Alice Johnson', avatar: 'AJ', status: 'online', isBot: false,
-    messages: [
-      { id: '1', senderId: 'alice', content: 'Hey! Are we still on for the meeting tomorrow?', timestamp: Date.now() - 7200000, type: 'text' },
-      { id: '2', senderId: 'user', content: 'Yes, definitely! 2pm works for me.', timestamp: Date.now() - 7000000, type: 'text' },
-      { id: '3', senderId: 'alice', content: 'Perfect, see you then!', timestamp: Date.now() - 6800000, type: 'text' },
-    ],
-  },
-  {
-    id: 'bob', name: 'Bob Smith', avatar: 'BS', status: 'away', isBot: false,
-    messages: [
-      { id: '1', senderId: 'bob', content: 'The project files are ready for review.', timestamp: Date.now() - 86400000, type: 'text' },
-      { id: '2', senderId: 'user', content: 'Great, I\'ll take a look this afternoon.', timestamp: Date.now() - 85000000, type: 'text' },
-    ],
-  },
-  {
-    id: 'carol', name: 'Carol White', avatar: 'CW', status: 'offline', isBot: false,
-    messages: [
-      { id: '1', senderId: 'carol', content: 'Thanks for your help last week!', timestamp: Date.now() - 172800000, type: 'text' },
-      { id: '2', senderId: 'user', content: 'No problem at all, happy to help!', timestamp: Date.now() - 170000000, type: 'text' },
-    ],
-  },
-];
-
-// ---- Typing Indicator ----
-const TypingIndicator = memo(function TypingIndicator() {
-  return (
-    <div className="flex items-end gap-2">
-      <div className="flex items-center gap-1 px-4 py-2.5 rounded-2xl" style={{ background: 'var(--bg-titlebar)', borderRadius: '16px 16px 16px 4px' }}>
-        <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--text-secondary)', animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--text-secondary)', animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--text-secondary)', animationDelay: '300ms' }} />
-      </div>
-    </div>
-  );
-});
-
-// ---- Helpers ----
-const formatTime = (ts: number): string => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-const formatDateSeparator = (ts: number): string => {
-  const d = new Date(ts);
-  const today = new Date();
-  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Today';
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+// Fallback responses if API unavailable
+const getFallbackResponse = (input: string): string => {
+  const lower = input.toLowerCase();
+  if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey'))
+    return "Hello, Nova! I'm your WebLinuxOS Assistant. How can I help you today?";
+  if (lower.includes('help'))
+    return "I can help you with:\n• **Opening apps** — just ask me to open any app\n• **System info** — ask about the OS or specs\n• **Linux commands** — I know Terminal commands\n• **Coding help** — JavaScript, TypeScript, React, and more\n• **General questions** — ask me anything!\n\nWhat would you like to know?";
+  if (lower.includes('time'))
+    return `The current time is **${new Date().toLocaleTimeString()}**.`;
+  if (lower.includes('date'))
+    return `Today is **${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**.`;
+  if (lower.includes('joke'))
+    return "Why do programmers prefer dark mode? Because **light attracts bugs**! 🐛";
+  if (lower.includes('app') || lower.includes('open'))
+    return "WebLinuxOS has many built-in apps:\n• **Terminal** — bash-like shell\n• **File Manager** — browse files\n• **Browser** — web browsing\n• **Calendar** — events & dates\n• **Weather** — forecasts\n• **Code Editor** — write code\n• **Settings** — customize OS\n• **Games** — Chess, Snake, Tetris & more!\n\nDouble-click any app in the launcher to open it.";
+  if (lower.includes('who are you') || lower.includes('what are you'))
+    return "I'm **WebLinux AI**, the built-in assistant of WebLinuxOS! I'm powered by Claude (Anthropic's AI). I can help you with anything — from coding questions to OS features. Ask away! 🤖";
+  if (lower.includes('nova') || lower.includes('who made') || lower.includes('creator'))
+    return "WebLinuxOS was created by **Nova (Shaik Muzzammil)**, a CSE student at Amrita Vishwa Vidyapeetham in Chennai, India. It's a full-stack portfolio project built with React, TypeScript, Vite, and Tailwind CSS. Impressive work! 🚀";
+  return "That's interesting! I'm your WebLinuxOS assistant. You can ask me about the OS, Linux commands, coding help, or just chat. What would you like to know? 😊";
 };
 
-// ---- Main Chat Component ----
+// ---- Main Component ----
 export default function Chat() {
-  const [conversations, setConversations] = useState<Conversation[]>(() => {
-    try {
-      const saved = localStorage.getItem('ubuntuos_chat');
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return createInitialConversations();
-  });
-  const [activeConvId, setActiveConvId] = useState('bot');
-  const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'assistant',
+      content: "Hello, Nova! 👋 I'm **WebLinux AI**, your built-in OS assistant powered by Claude.\n\nI can help you with:\n• Linux commands & terminal tips\n• Coding questions (JS, TS, React, Python...)\n• OS features & app navigation\n• General knowledge & problem-solving\n\nWhat can I do for you today?",
+      timestamp: Date.now() - 1000,
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNewChat, setShowNewChat] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
-
-  // Persist to localStorage
   useEffect(() => {
-    localStorage.setItem('ubuntuos_chat', JSON.stringify(conversations));
-  }, [conversations]);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeConv.messages, isTyping]);
+  const sendMessage = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput('');
+    setShowEmoji(false);
 
-  const sendMessage = useCallback(() => {
-    const text = inputText.trim();
-    if (!text) return;
-
-    const newMessage: Message = {
+    const userMsg: Message = {
       id: Math.random().toString(36).slice(2),
-      senderId: 'user',
+      role: 'user',
       content: text,
       timestamp: Date.now(),
-      type: 'text',
     };
+    setMessages(prev => [...prev, userMsg]);
+    setLoading(true);
 
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeConvId ? { ...c, messages: [...c.messages, newMessage] } : c
-      )
-    );
-    setInputText('');
+    // Build history for Claude (last 10 msgs, excluding initial greeting)
+    const history = [...messages.slice(-9), userMsg]
+      .map(m => ({ role: m.role, content: m.content }));
 
-    // Bot response
-    if (activeConv?.isBot) {
-      setIsTyping(true);
-      setTimeout(() => {
-        const response: Message = {
-          id: Math.random().toString(36).slice(2),
-          senderId: 'bot',
-          content: getBotResponse(text),
-          timestamp: Date.now(),
-          type: 'text',
-        };
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === activeConvId ? { ...c, messages: [...c.messages, response] } : c
-          )
-        );
-        setIsTyping(false);
-      }, 1000 + Math.random() * 1000);
-    } else {
-      // Simulate reply from human contacts
-      setIsTyping(true);
-      setTimeout(() => {
-        const responses = [
-          'That sounds great!',
-          'I agree with you.',
-          'Let me think about that.',
-          'Interesting point!',
-          'Can you tell me more?',
-          'Absolutely!',
-          'I\'ll get back to you on that.',
-        ];
-        const response: Message = {
-          id: Math.random().toString(36).slice(2),
-          senderId: activeConvId,
-          content: responses[Math.floor(Math.random() * responses.length)],
-          timestamp: Date.now(),
-          type: 'text',
-        };
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === activeConvId ? { ...c, messages: [...c.messages, response] } : c
-          )
-        );
-        setIsTyping(false);
-      }, 2000 + Math.random() * 2000);
+    try {
+      const reply = await callClaude(history);
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36).slice(2),
+        role: 'assistant',
+        content: reply,
+        timestamp: Date.now(),
+      }]);
+    } catch {
+      setMessages(prev => [...prev, {
+        id: Math.random().toString(36).slice(2),
+        role: 'assistant',
+        content: "Sorry, I'm having trouble connecting right now. Please try again!",
+        timestamp: Date.now(),
+      }]);
+    } finally {
+      setLoading(false);
     }
-  }, [inputText, activeConvId, activeConv?.isBot, activeConvId]);
+  }, [input, loading, messages]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }, [sendMessage]);
+
+  const formatContent = (text: string) => {
+    // Simple markdown-like formatting
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/`(.*?)`/g, '<code style="background:rgba(124,77,255,0.15);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:11px;">$1</code>')
+      .replace(/\n/g, '<br/>');
   };
 
-  const addEmoji = (emoji: string) => setInputText((prev) => prev + emoji);
-
-  const createNewChat = (name: string) => {
-    const id = Math.random().toString(36).slice(2);
-    const newConv: Conversation = {
-      id, name, avatar: name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2),
-      status: 'offline', isBot: false, messages: [],
-    };
-    setConversations((prev) => [...prev, newConv]);
-    setActiveConvId(id);
-    setShowNewChat(false);
+  const safeTime = (ts: number) => {
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch { return ''; }
   };
-
-  const filteredConvs = conversations.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Group messages by date
-  const groupedMessages: { date: string; messages: Message[] }[] = [];
-  activeConv.messages.forEach((msg) => {
-    const dateLabel = formatDateSeparator(msg.timestamp);
-    const lastGroup = groupedMessages[groupedMessages.length - 1];
-    if (lastGroup && lastGroup.date === dateLabel) {
-      lastGroup.messages.push(msg);
-    } else {
-      groupedMessages.push({ date: dateLabel, messages: [msg] });
-    }
-  });
 
   return (
-    <div className="flex h-full" style={{ background: 'var(--bg-window)' }}>
-      {/* Left Sidebar */}
-      <div className="flex flex-col shrink-0" style={{ width: 220, borderRight: '1px solid var(--border-subtle)' }}>
-        <div className="p-3 shrink-0">
-          <div className="flex items-center gap-2 px-3" style={{ height: 36, borderRadius: 18, background: 'var(--bg-input)', border: '1px solid var(--border-default)' }}>
-            <Search size={14} style={{ color: 'var(--text-disabled)', flexShrink: 0 }} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search conversations"
-              className="flex-1 bg-transparent outline-none"
-              style={{ color: 'var(--text-primary)', fontSize: '13px' }}
-            />
+    <div className="flex flex-col h-full" style={{ background: '#121212' }}>
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3 shrink-0"
+        style={{ background: '#1A1A1A', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#7C4DFF,#E91E8C)' }}>
+          <Bot size={18} className="text-white" />
+        </div>
+        <div>
+          <div className="text-sm font-bold text-white">WebLinux AI</div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: loading ? '#FFB74D' : '#4CAF50' }} />
+            <span className="text-[10px]" style={{ color: loading ? '#FFB74D' : '#4CAF50' }}>
+              {loading ? 'Thinking...' : 'Online · Powered by Claude'}
+            </span>
           </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {filteredConvs.map((conv) => {
-            const lastMsg = conv.messages[conv.messages.length - 1];
-            return (
-              <button
-                key={conv.id}
-                onClick={() => setActiveConvId(conv.id)}
-                className="flex items-start gap-3 w-full px-3 py-2 text-left transition-all"
-                style={{
-                  background: conv.id === activeConvId ? 'var(--bg-selected)' : 'transparent',
-                }}
-              >
-                <div className="relative shrink-0">
-                  <div
-                    className="flex items-center justify-center rounded-full"
-                    style={{
-                      width: 44, height: 44,
-                      background: conv.isBot ? 'var(--accent-primary)' : 'var(--accent-secondary)',
-                      color: 'white', fontSize: '14px', fontWeight: 600,
-                    }}
-                  >
-                    {conv.isBot ? <Bot size={20} /> : conv.avatar}
-                  </div>
-                  <div
-                    className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
-                    style={{
-                      background: conv.status === 'online' ? 'var(--accent-success)' : conv.status === 'away' ? 'var(--accent-warning)' : 'var(--text-disabled)',
-                      borderColor: 'var(--bg-window)',
-                    }}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="truncate" style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{conv.name}</span>
-                    {lastMsg && (
-                      <span style={{ fontSize: '10px', color: 'var(--text-disabled)', flexShrink: 0 }}>{formatTime(lastMsg.timestamp)}</span>
-                    )}
-                  </div>
-                  {lastMsg && (
-                    <span className="truncate block" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      {lastMsg.senderId === 'user' ? 'You: ' : ''}{lastMsg.content}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="p-3 shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        <div className="ml-auto flex items-center gap-1">
           <button
-            onClick={() => setShowNewChat(true)}
-            className="w-full flex items-center justify-center gap-2 transition-all hover:opacity-90"
-            style={{ height: 36, borderRadius: 'var(--radius-md)', background: 'var(--accent-primary)', color: 'white', fontSize: '13px', fontWeight: 500 }}
+            onClick={() => setMessages([{
+              id: '1', role: 'assistant',
+              content: "Hello again, Nova! 👋 How can I help you today?",
+              timestamp: Date.now(),
+            }])}
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+            title="New conversation"
           >
-            <Plus size={16} /> New Chat
+            <Plus size={14} style={{ color: '#9E9E9E' }} />
+          </button>
+          <button
+            onClick={() => setMessages([])}
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+            title="Clear chat"
+          >
+            <Trash2 size={14} style={{ color: '#9E9E9E' }} />
           </button>
         </div>
       </div>
 
-      {/* Right Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 shrink-0" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-titlebar)' }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="flex items-center justify-center rounded-full"
-              style={{
-                width: 36, height: 36,
-                background: activeConv.isBot ? 'var(--accent-primary)' : 'var(--accent-secondary)',
-                color: 'white', fontSize: '12px', fontWeight: 600,
-              }}
-            >
-              {activeConv.isBot ? <Bot size={18} /> : activeConv.avatar}
-            </div>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{activeConv.name}</div>
-              <div className="flex items-center gap-1">
-                <Circle size={8} fill={activeConv.status === 'online' ? 'var(--accent-success)' : activeConv.status === 'away' ? 'var(--accent-warning)' : 'var(--text-disabled)'} style={{ color: 'transparent' }} />
-                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                  {activeConv.status === 'online' ? 'Online' : activeConv.status === 'away' ? 'Away' : 'Offline'}
-                </span>
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center flex-1 text-center py-12">
+            <MessageSquare size={48} style={{ color: 'rgba(124,77,255,0.3)', marginBottom: 12 }} />
+            <p className="text-sm font-semibold text-white/40">Start a conversation</p>
+            <p className="text-xs text-white/25 mt-1">Ask me anything about WebLinuxOS</p>
+          </div>
+        )}
+
+        {messages.map(msg => (
+          <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'assistant' && (
+              <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-1" style={{ background: 'linear-gradient(135deg,#7C4DFF,#E91E8C)' }}>
+                <Bot size={14} className="text-white" />
               </div>
+            )}
+            <div style={{ maxWidth: '78%' }}>
+              <div
+                className="px-3 py-2.5 rounded-2xl text-sm leading-relaxed"
+                style={{
+                  background: msg.role === 'user' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)',
+                  color: msg.role === 'user' ? 'white' : 'rgba(255,255,255,0.88)',
+                  borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                  wordBreak: 'break-word',
+                }}
+                dangerouslySetInnerHTML={{ __html: formatContent(msg.content) }}
+              />
+              <div className={`text-[10px] text-white/25 mt-0.5 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                {safeTime(msg.timestamp)}
+              </div>
+            </div>
+            {msg.role === 'user' && (
+              <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-1" style={{ background: 'rgba(124,77,255,0.25)' }}>
+                <User size={14} style={{ color: 'var(--accent-primary)' }} />
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex gap-2 justify-start">
+            <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg,#7C4DFF,#E91E8C)' }}>
+              <Bot size={14} className="text-white" />
+            </div>
+            <div className="px-4 py-3 rounded-2xl flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '18px 18px 18px 4px' }}>
+              {[0,1,2].map(i => (
+                <div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ background: 'var(--accent-primary)', animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                />
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-3 flex flex-col gap-1">
-          {groupedMessages.map((group) => (
-            <div key={group.date} className="flex flex-col gap-1">
-              <div className="flex justify-center my-2">
-                <span className="px-3 py-1 rounded-full" style={{ fontSize: '11px', color: 'var(--text-disabled)', background: 'var(--bg-titlebar)' }}>
-                  {group.date}
-                </span>
-              </div>
-              {group.messages.map((msg) => {
-                const isSent = msg.senderId === 'user';
-                return (
-                  <div key={msg.id} className={`flex ${isSent ? 'justify-end' : 'justify-start'} mb-1`}>
-                    <div className="flex flex-col max-w-[70%]">
-                      <div
-                        className="px-3.5 py-2.5"
-                        style={{
-                          borderRadius: isSent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                          background: isSent ? 'var(--accent-primary)' : 'var(--bg-titlebar)',
-                          color: isSent ? 'white' : 'var(--text-primary)',
-                          fontSize: '13px',
-                          lineHeight: 1.5,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {msg.content}
-                      </div>
-                      <span className={`mt-0.5 ${isSent ? 'text-right' : 'text-left'}`} style={{ fontSize: '10px', color: 'var(--text-disabled)', opacity: 0.7 }}>
-                        {formatTime(msg.timestamp)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-          {isTyping && <TypingIndicator />}
-          <div ref={messagesEndRef} />
-        </div>
+        <div ref={bottomRef} />
+      </div>
 
-        {/* Input Area */}
-        <div className="flex items-center gap-2 px-3 py-2 shrink-0 relative" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-titlebar)' }}>
+      {/* Input area */}
+      <div className="relative shrink-0 px-3 pb-3 pt-2" style={{ background: '#1A1A1A', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {showEmoji && (
+          <EmojiPicker onSelect={e => setInput(prev => prev + e)} onClose={() => setShowEmoji(false)} />
+        )}
+        <div
+          className="flex items-end gap-2 rounded-2xl px-3 py-2"
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
           <button
-            onClick={() => setShowEmoji(!showEmoji)}
-            className="flex items-center justify-center rounded-full transition-all hover:bg-[var(--bg-hover)]"
-            style={{ width: 32, height: 32, flexShrink: 0 }}
+            onClick={() => setShowEmoji(v => !v)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.08] transition-colors shrink-0 mb-0.5"
           >
-            <Smile size={18} style={{ color: 'var(--text-secondary)' }} />
+            <Smile size={16} style={{ color: '#9E9E9E' }} />
           </button>
-          {showEmoji && <EmojiPicker onSelect={addEmoji} onClose={() => setShowEmoji(false)} />}
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            className="flex-1 px-4 outline-none"
-            style={{
-              height: 40, borderRadius: 20, background: 'var(--bg-input)',
-              border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: '13px',
+            placeholder="Message WebLinux AI... (Enter to send)"
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 resize-none outline-none leading-relaxed"
+            style={{ maxHeight: 120, minHeight: 22 }}
+            rows={1}
+            onInput={e => {
+              const t = e.currentTarget;
+              t.style.height = 'auto';
+              t.style.height = Math.min(t.scrollHeight, 120) + 'px';
             }}
           />
           <button
             onClick={sendMessage}
-            disabled={!inputText.trim()}
-            className="flex items-center justify-center rounded-full transition-all hover:opacity-90"
+            disabled={!input.trim() || loading}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all"
             style={{
-              width: 36, height: 36,
-              background: inputText.trim() ? 'var(--accent-primary)' : 'var(--border-default)',
-              color: inputText.trim() ? 'white' : 'var(--text-disabled)',
-              flexShrink: 0,
+              background: input.trim() && !loading ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)',
+              opacity: !input.trim() || loading ? 0.4 : 1,
             }}
           >
-            <Send size={16} />
+            {loading ? <Loader2 size={15} className="text-white animate-spin" /> : <Send size={15} className="text-white" />}
           </button>
         </div>
+        <p className="text-[10px] text-white/20 text-center mt-1">Shift+Enter for new line · Enter to send</p>
       </div>
 
-      {/* New Chat Dialog */}
-      {showNewChat && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-          <div className="p-5 rounded-xl" style={{ width: 320, background: 'var(--bg-window)', boxShadow: 'var(--shadow-xl)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>New Conversation</h3>
-            <NewChatForm onCreate={createNewChat} onCancel={() => setShowNewChat(false)} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---- New Chat Form ----
-function NewChatForm({ onCreate, onCancel }: { onCreate: (name: string) => void; onCancel: () => void }) {
-  const [name, setName] = useState('');
-  return (
-    <div className="flex flex-col gap-3">
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Contact name"
-        autoFocus
-        className="w-full px-3 outline-none"
-        style={{ height: 36, borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-default)', color: 'var(--text-primary)', fontSize: '13px' }}
-      />
-      <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="px-4 py-2 rounded-lg transition-all hover:bg-[var(--bg-hover)]" style={{ fontSize: '13px', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}>Cancel</button>
-        <button
-          onClick={() => { if (name.trim()) onCreate(name.trim()); }}
-          disabled={!name.trim()}
-          className="px-4 py-2 rounded-lg transition-all hover:opacity-90"
-          style={{ fontSize: '13px', fontWeight: 500, background: 'var(--accent-primary)', color: 'white', opacity: name.trim() ? 1 : 0.5 }}
-        >
-          Start Chat
-        </button>
-      </div>
+      <style>{`
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-4px); }
+        }
+      `}</style>
     </div>
   );
 }

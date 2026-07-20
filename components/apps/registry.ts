@@ -29,7 +29,7 @@ export const APP_REGISTRY: AppDefinition[] = [
   // ── Internet (7) ─────────────────────────────────────────
   { id: 'browser', name: 'Web Browser', icon: 'Globe', category: 'Internet', description: 'Lightweight browser with tabs and bookmarks', defaultSize: { width: 960, height: 640 }, minSize: { width: 480, height: 360 } },
   { id: 'email', name: 'Email', icon: 'Mail', category: 'Internet', description: 'Email client with inbox and compose', defaultSize: { width: 880, height: 600 }, minSize: { width: 480, height: 360 } },
-  { id: 'chat', name: 'Chat', icon: 'MessageSquare', category: 'Internet', description: 'AI chat assistant (Claude-powered)', defaultSize: { width: 520, height: 640 }, minSize: { width: 320, height: 400 } },
+  { id: 'chat', name: 'Chat', icon: 'MessageSquare', category: 'Internet', description: 'NEXUS Intelligence System — AI assistant', defaultSize: { width: 520, height: 640 }, minSize: { width: 320, height: 400 } },
   { id: 'weather', name: 'Weather', icon: 'CloudSun', category: 'Internet', description: 'Weather forecast by location', defaultSize: { width: 440, height: 520 }, minSize: { width: 320, height: 400 } },
   { id: 'rssreader', name: 'RSS Reader', icon: 'Rss', category: 'Internet', description: 'Subscribe and read RSS feeds', defaultSize: { width: 800, height: 560 }, minSize: { width: 480, height: 360 } },
   { id: 'ftpclient', name: 'FTP Client', icon: 'Server', category: 'Internet', description: 'File transfer protocol client', defaultSize: { width: 680, height: 480 }, minSize: { width: 400, height: 320 } },

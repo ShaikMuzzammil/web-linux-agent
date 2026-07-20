@@ -1,6 +1,6 @@
 'use client';
 import { useState, useCallback } from 'react';
-import { Palette, Monitor, Bell, User, Zap, Layout, Shield, Info, Sun, Moon, Check, LogOut, ChevronRight } from 'lucide-react';
+import { Palette, Monitor, Bell, User, Zap, Layout, Shield, Info, Sun, Moon, Check, LogOut, ChevronRight, ExternalLink, Github, Linkedin, Mail, Code2, Award, BookOpen, Globe } from 'lucide-react';
 import { useOSStore } from '@/hooks/useOSStore';
 import { signOut } from 'next-auth/react';
 import { APP_REGISTRY } from '@/components/apps/registry';
@@ -22,7 +22,7 @@ const WALLPAPERS = [
   { name: 'Ocean', path: '/wallpapers/ocean.svg', preview: 'linear-gradient(135deg, #020d18 0%, #041520 50%, #021018 100%)' },
 ];
 
-type Section = 'appearance' | 'wallpaper' | 'dock' | 'notifications' | 'account' | 'about';
+type Section = 'appearance' | 'wallpaper' | 'dock' | 'notifications' | 'account' | 'about' | 'pioneer';
 
 const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
@@ -31,10 +31,24 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'notifications', label: 'Notifications', icon: <Bell size={15} /> },
   { id: 'account', label: 'Account', icon: <User size={15} /> },
   { id: 'about', label: 'About', icon: <Info size={15} /> },
+  { id: 'pioneer', label: 'Pioneered By', icon: <Zap size={15} /> },
 ];
 
 export default function Settings({ windowId }: { windowId: string }) {
   const { theme, setTheme, toggleTheme, auth, dockItems, pinDockItem, unpinDockItem, logout } = useOSStore();
+
+  // Save wallpaper: localStorage (via setTheme) + cloud sync
+  const saveWallpaper = useCallback(async (path: string) => {
+    setTheme({ wallpaper: path });
+    // Also push to cloud (fire-and-forget)
+    try {
+      await fetch('/api/sync/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: { wallpaper: path, themeMode: theme.mode, accentColor: theme.accent } }),
+      });
+    } catch {}
+  }, [setTheme, theme.mode, theme.accent]);
   const [section, setSection] = useState<Section>('appearance');
 
   const handleSignOut = useCallback(async () => {
@@ -128,7 +142,7 @@ export default function Settings({ windowId }: { windowId: string }) {
             <h2 className="text-base font-bold">Wallpaper</h2>
             <div className="grid grid-cols-3 gap-3">
               {WALLPAPERS.map((w) => (
-                <button key={w.path} onClick={() => setTheme({ wallpaper: w.path })}
+                <button key={w.path} onClick={() => saveWallpaper(w.path)}
                   className="relative flex flex-col items-center gap-2 group">
                   <div className="w-full aspect-video rounded-xl overflow-hidden transition-all"
                     style={{ background: w.preview, border: theme.wallpaper === w.path ? `2px solid ${theme.accent}` : '2px solid transparent' }}>
@@ -141,7 +155,7 @@ export default function Settings({ windowId }: { windowId: string }) {
             <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
               <p className="text-xs font-semibold mb-2 opacity-70">Custom URL</p>
               <div className="flex gap-2">
-                <input placeholder="https://example.com/wallpaper.jpg" className="flex-1 px-3 py-1.5 rounded-lg text-xs outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${border}`, caretColor: theme.accent }} onKeyDown={(e) => { if (e.key === 'Enter') setTheme({ wallpaper: (e.target as HTMLInputElement).value }); }} />
+                <input placeholder="https://example.com/wallpaper.jpg" className="flex-1 px-3 py-1.5 rounded-lg text-xs outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${border}`, caretColor: theme.accent }} onKeyDown={(e) => { if (e.key === 'Enter') saveWallpaper((e.target as HTMLInputElement).value); }} />
                 <button className="px-3 py-1.5 rounded-lg text-xs text-white" style={{ background: theme.accent }}>Set</button>
               </div>
             </div>
@@ -210,13 +224,181 @@ export default function Settings({ windowId }: { windowId: string }) {
         {section === 'about' && (
           <div className="space-y-5">
             <h2 className="text-base font-bold">About WebLinuxOS</h2>
-            <div className="p-5 rounded-xl space-y-3" style={{ background: cardBg, border: `1px solid ${border}` }}>
-              {[['Version', 'WebLinuxOS 2.0.0'], ['Build', 'Next.js 14 + Neon DB'], ['Apps', '54 built-in apps'], ['Auth', 'NextAuth v4 (Email, GitHub, Google)'], ['Storage', 'Neon PostgreSQL + Local fallback'], ['Theme', 'Catppuccin-inspired dark/light'], ['Developer', 'WebLinuxOS Team']].map(([k, v]) => (
+
+            {/* Logo + tagline */}
+            <div className="p-5 rounded-xl flex items-center gap-4" style={{ background: `linear-gradient(135deg, ${theme.accent}18, ${theme.accent}06)`, border: `1px solid ${theme.accent}30` }}>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}99)` }}>
+                <span className="text-white font-black text-2xl">W</span>
+              </div>
+              <div>
+                <div className="text-base font-bold">WebLinuxOS</div>
+                <div className="text-xs opacity-60 mt-0.5">Version 2.0.0 LTS</div>
+                <div className="text-xs opacity-40 mt-1">A browser-based Ubuntu-style cloud desktop</div>
+              </div>
+            </div>
+
+            {/* System info */}
+            <div className="p-4 rounded-xl space-y-2.5" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <p className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3">System Information</p>
+              {[
+                ['Build Stack', 'Next.js 14 · TypeScript · Tailwind CSS'],
+                ['Database', 'Neon PostgreSQL · Prisma ORM'],
+                ['Auth', 'NextAuth v4 (Email + OAuth)'],
+                ['AI Engine', 'NEXUS Intelligence System'],
+                ['Built-in Apps', '54 applications'],
+                ['Storage', 'Cloud sync + localStorage fallback'],
+                ['Deployment', 'Vercel Edge Network'],
+                ['Processor', 'WebAssembly Virtual CPU'],
+                ['Memory', '8 GB (Browser simulated)'],
+              ].map(([k, v]) => (
                 <div key={k} className="flex justify-between text-xs">
                   <span className="opacity-50">{k}</span>
                   <span className="font-medium">{v}</span>
                 </div>
               ))}
+            </div>
+
+            {/* Storage bar */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="opacity-60">Storage Used</span>
+                <span className="font-medium">21 GB / 50 GB</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                <div className="h-full rounded-full" style={{ width: '42%', background: `linear-gradient(90deg, ${theme.accent}, ${theme.accent}99)` }} />
+              </div>
+            </div>
+
+            <button className="w-full py-2.5 rounded-xl text-xs font-semibold text-white transition-all" style={{ background: `linear-gradient(135deg,${theme.accent},${theme.accent}cc)` }}>
+              Check for Updates
+            </button>
+          </div>
+        )}
+
+        {section === 'pioneer' && (
+          <div className="space-y-5">
+            <h2 className="text-base font-bold">Pioneered By</h2>
+
+            {/* Profile hero */}
+            <div className="p-5 rounded-xl" style={{ background: `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}08)`, border: `1px solid ${theme.accent}35` }}>
+              <div className="flex items-center gap-4 mb-4">
+                {/* Avatar */}
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 text-white font-black text-2xl shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}99)` }}
+                >
+                  SM
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-base font-black tracking-tight">Shaik Muzzammil</div>
+                  <div className="text-xs font-medium mt-0.5" style={{ color: theme.accent }}>Full-Stack Engineer · AI Enthusiast</div>
+                  <div className="text-[10px] opacity-50 mt-1">📍 Chennai, India</div>
+                </div>
+              </div>
+              <p className="text-xs leading-relaxed opacity-70">
+                Third-year CSE undergraduate at Amrita Vishwa Vidyapeetham, building scalable full-stack web applications, REST APIs, and AI-integrated systems. Passionate about clean software architecture and real-world engineering.
+              </p>
+            </div>
+
+            {/* Links */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { icon: <Globe size={13}/>, label: 'Portfolio', href: 'https://shaik-muzzammil.vercel.app', color: theme.accent },
+                { icon: <Github size={13}/>, label: 'GitHub', href: 'https://github.com/ShaikMuzzammil', color: '#E2E8F0' },
+                { icon: <Linkedin size={13}/>, label: 'LinkedIn', href: 'https://linkedin.com/in/shaik-muzzammil', color: '#0A66C2' },
+                { icon: <Mail size={13}/>, label: 'Email', href: 'mailto:muzzammil160806@gmail.com', color: '#EA4335' },
+              ].map(({ icon, label, href, color }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl transition-all text-xs font-medium"
+                  style={{ background: cardBg, border: `1px solid ${border}`, color: 'inherit', textDecoration: 'none' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = color + '55'; (e.currentTarget as HTMLAnchorElement).style.background = color + '12'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = border; (e.currentTarget as HTMLAnchorElement).style.background = cardBg; }}
+                >
+                  <span style={{ color }}>{icon}</span>
+                  {label}
+                  <ExternalLink size={9} className="ml-auto opacity-40" />
+                </a>
+              ))}
+            </div>
+
+            {/* Education */}
+            <div className="p-4 rounded-xl space-y-2" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen size={13} style={{ color: theme.accent }} />
+                <span className="text-xs font-bold uppercase tracking-wider opacity-60">Education</span>
+              </div>
+              <div className="text-xs font-semibold">B.Tech — Computer Science & Engineering</div>
+              <div className="text-xs opacity-60">Amrita Vishwa Vidyapeetham, Chennai</div>
+              <div className="text-[10px] opacity-40">2024 – 2028 (Expected)</div>
+            </div>
+
+            {/* Projects */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Code2 size={13} style={{ color: theme.accent }} />
+                <span className="text-xs font-bold uppercase tracking-wider opacity-60">Flagship Projects</span>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { name: 'WebLinuxOS', stack: 'Next.js · TypeScript · Neon DB', desc: '54-app browser-based Ubuntu desktop' },
+                  { name: 'CortexCart', stack: 'Next.js · PostgreSQL · Prisma', desc: 'Multi-portal e-commerce platform' },
+                  { name: 'Smart Query Optimizer', stack: 'Next.js · AI · PostgreSQL', desc: 'NL→SQL AI-powered workspace' },
+                  { name: 'OmniPoll', stack: 'React · WebSockets · PostgreSQL', desc: 'Real-time live polling platform' },
+                  { name: 'AgroWave', stack: 'Next.js · Tailwind CSS', desc: 'Agriculture analytics dashboard (95+ Lighthouse)' },
+                ].map(p => (
+                  <div key={p.name} className="pl-3" style={{ borderLeft: `2px solid ${theme.accent}50` }}>
+                    <div className="text-xs font-semibold">{p.name}</div>
+                    <div className="text-[10px] opacity-50 mt-0.5">{p.stack}</div>
+                    <div className="text-[10px] opacity-40">{p.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Skills */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Zap size={13} style={{ color: theme.accent }} />
+                <span className="text-xs font-bold uppercase tracking-wider opacity-60">Technical Skills</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {['React.js','Next.js','TypeScript','Node.js','Python','Java','PostgreSQL','Prisma','Tailwind CSS','Git','Docker','Linux','REST APIs','WebSockets','LLMs'].map(s => (
+                  <span key={s} className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: `${theme.accent}18`, border: `1px solid ${theme.accent}35`, color: theme.accent }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Certifications */}
+            <div className="p-4 rounded-xl" style={{ background: cardBg, border: `1px solid ${border}` }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Award size={13} style={{ color: theme.accent }} />
+                <span className="text-xs font-bold uppercase tracking-wider opacity-60">Certifications</span>
+              </div>
+              <div className="space-y-2">
+                {[
+                  'JPMorgan Chase & Co. — Software Engineering Simulation',
+                  'Vista Equity Partners — AI in Action Simulation',
+                  'Databricks — Generative AI Fundamentals',
+                  'Google — Gemini for University Students',
+                ].map(c => (
+                  <div key={c} className="flex items-start gap-2 text-[10px] opacity-60">
+                    <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ background: theme.accent }} />
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="text-center py-2">
+              <p className="text-[10px] opacity-30">WebLinuxOS — Designed & built from scratch</p>
+              <p className="text-[10px] opacity-20 mt-0.5">© 2024–2025 Shaik Muzzammil · All rights reserved</p>
             </div>
           </div>
         )}

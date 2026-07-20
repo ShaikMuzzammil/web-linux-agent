@@ -11,7 +11,7 @@ const SYSTEM_NOTIFS = [
   { appId: 'security', appName: 'Security', appIcon: 'Shield', title: 'Security Scan Complete', message: 'No threats detected. System is secure.' },
   { appId: 'storage', appName: 'Storage', appIcon: 'HardDrive', title: 'Storage: 21 GB / 50 GB', message: 'You have 29 GB of space remaining.' },
   { appId: 'updates', appName: 'Updates', appIcon: 'Download', title: '3 Updates Available', message: 'Package updates ready to install.' },
-  { appId: 'chat', appName: 'WebLinux AI', appIcon: 'Bot', title: 'Hello, Nova! 👋', message: 'Your AI assistant is ready. Open Chat to talk.' },
+  { appId: 'chat', appName: 'NEXUS Intelligence', appIcon: 'Bot', title: 'Hello, Nova! 👋', message: 'Your AI assistant is ready. Open Chat to talk.' },
 ];
 
 const NotificationTrigger = memo(function NotificationTrigger() {
@@ -31,7 +31,6 @@ const NotificationTrigger = memo(function NotificationTrigger() {
         addNotification({
           ...notif,
           isRead: false,
-          
         });
       }, delay);
       timers.push(t);

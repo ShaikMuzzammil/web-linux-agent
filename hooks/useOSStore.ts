@@ -300,14 +300,14 @@ export const useOSStore = create<OSStore>()(
     setTheme: (t) =>
       set((s) => {
         const theme = { ...s.theme, ...t };
-        localStorage.setItem('wlos_theme', JSON.stringify(theme));
+        try { localStorage.setItem('wlos_theme', JSON.stringify(theme)); } catch {}
         return { theme };
       }),
 
     toggleTheme: () =>
       set((s) => {
         const theme = { ...s.theme, mode: s.theme.mode === 'dark' ? 'light' as const : 'dark' as const };
-        localStorage.setItem('wlos_theme', JSON.stringify(theme));
+        try { localStorage.setItem('wlos_theme', JSON.stringify(theme)); } catch {}
         return { theme };
       }),
 

@@ -151,21 +151,21 @@ export default memo(function WindowFrame({ window: win, children }: Props) {
             style={{ background: '#FF5F57', width: 13, height: 13 }}
             onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
             title="Close">
-            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 8, lineHeight: 1 }}>✕</span>
+            <span style={{ fontSize: 9, lineHeight: 1, color: "rgba(0,0,0,0.65)", fontWeight: 900 }}>✕</span>
           </button>
           <button
             className="traffic-btn relative flex items-center justify-center"
             style={{ background: '#FFBD2E', width: 13, height: 13 }}
             onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
             title="Minimize">
-            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 9, lineHeight: 1 }}>−</span>
+            <span style={{ fontSize: 11, lineHeight: 1, color: "rgba(0,0,0,0.65)", fontWeight: 900 }}>−</span>
           </button>
           <button
             className="traffic-btn relative flex items-center justify-center"
             style={{ background: '#28C840', width: 13, height: 13 }}
             onClick={(e) => { e.stopPropagation(); isMax ? restoreWindow(win.id) : maximizeWindow(win.id); }}
             title={isMax ? 'Restore' : 'Maximize'}>
-            <span className="opacity-0 group-hover/tl:opacity-100 transition-opacity text-black font-bold" style={{ fontSize: 8, lineHeight: 1 }}>{isMax ? '⊡' : '⊞'}</span>
+            <span style={{ fontSize: 9, lineHeight: 1, color: "rgba(0,0,0,0.65)", fontWeight: 900 }}>{isMax ? '⊡' : '⊞'}</span>
           </button>
         </div>
 
@@ -181,7 +181,7 @@ export default memo(function WindowFrame({ window: win, children }: Props) {
         </div>
 
         {/* Right area: window controls */}
-        <div className="w-14 flex-shrink-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="w-14 flex-shrink-0 flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
           <button onClick={e => { e.stopPropagation(); minimizeWindow(win.id); }} className="p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors" title="Minimize">
             <Icons.Minus size={10} />
           </button>

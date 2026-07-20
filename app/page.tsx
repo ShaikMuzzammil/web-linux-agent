@@ -48,8 +48,15 @@ export default function OS() {
       const res = await fetch('/api/sync/settings');
       const { settings } = await res.json();
       if (settings) {
-        setTheme({ mode: settings.themeMode, accent: settings.accentColor, wallpaper: settings.wallpaper });
-        initDock(settings.dockPinned);
+        // Only apply cloud settings if we don't have a locally saved wallpaper
+        // Local localStorage takes priority to avoid wallpaper reset on refresh
+        const localTheme = (() => { try { const t = localStorage.getItem('wlos_theme'); return t ? JSON.parse(t) : null; } catch { return null; } })();
+        setTheme({
+          mode: settings.themeMode || localTheme?.mode,
+          accent: settings.accentColor || localTheme?.accent,
+          wallpaper: localTheme?.wallpaper || settings.wallpaper,
+        });
+        if (settings.dockPinned) initDock(settings.dockPinned);
       }
     } catch { /* offline */ }
   }, [setTheme, initDock]);

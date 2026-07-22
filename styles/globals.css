@@ -240,3 +240,90 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px;
 
 /* ── Top panel popup ────────────────────────────────────────── */
 .top-popup { animation: popupIn 0.16s cubic-bezier(0.34,1.46,0.64,1); }
+
+/* ═══════════════════════════════════════════════════════════
+   WebLinuxOS v4 — Global additions
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Custom font size CSS var (controlled via Settings) ──── */
+:root { --wlos-font-size: 13px; }
+
+/* ── Hide scrollbars on small containers ─────────────────── */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ── Window open animation ──────────────────────────────── */
+@keyframes windowOpen {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* ── Popup slide-in ─────────────────────────────────────── */
+@keyframes popupIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* ── Notification toast slide-in ─────────────────────────── */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.notification-toast { animation: toastIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ── Pioneer section animations ─────────────────────────── */
+@keyframes pioneerBgPulse {
+  0%,100% { opacity: 0.75; }
+  50%      { opacity: 1;    }
+}
+@keyframes pioneerAvatarPulse {
+  0%,100% { box-shadow: 0 0 0 3px var(--accent, #E95420)30,
+                        0 0 0 6px var(--accent, #E95420)15,
+                        0 0 32px var(--accent, #E95420)40; }
+  50%     { box-shadow: 0 0 0 5px var(--accent, #E95420)22,
+                        0 0 0 10px var(--accent, #E95420)10,
+                        0 0 48px var(--accent, #E95420)50; }
+}
+@keyframes pioneerOrbitDot {
+  0%   { transform: rotate(0deg)   translateX(44px); }
+  100% { transform: rotate(360deg) translateX(44px); }
+}
+
+/* ── Light mode scrollbar ────────────────────────────────── */
+html.light * {
+  scrollbar-color: rgba(0,0,0,0.18) transparent;
+}
+html.dark * {
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+* {
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { border-radius: 99px; }
+html.light *::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.16); }
+html.dark  *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+
+/* ── Resize corner handle ───────────────────────────────── */
+.window-frame:hover .resize-corner {
+  opacity: 1;
+}
+.resize-corner { opacity: 0; transition: opacity 0.2s; }
+
+/* ── Traffic light buttons ───────────────────────────────── */
+.traffic-btn { transition: transform 0.1s, filter 0.1s; }
+.traffic-btn:hover { transform: scale(1.12); filter: brightness(1.1); }
+.traffic-btn:active { transform: scale(0.94); }
+
+/* ── App content area ────────────────────────────────────── */
+.app-content {
+  overflow: hidden;
+  border-radius: 0 0 12px 12px;
+}
+
+/* ── Taskbar items ───────────────────────────────────────── */
+.taskbar-item {
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+}
+.taskbar-item:active { transform: scale(0.96); }

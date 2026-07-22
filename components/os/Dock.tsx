@@ -138,7 +138,7 @@ export default memo(function Dock() {
   return (
     <div
       ref={dockRef}
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-[800] flex items-end gap-1.5 px-3 py-2 rounded-2xl"
+      className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[800] flex items-end gap-1.5 px-3 py-2 rounded-2xl"
       style={{
         background: 'rgba(12,12,22,0.72)',
         backdropFilter: 'blur(28px) saturate(180%)',

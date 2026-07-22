@@ -2,14 +2,15 @@
 import { useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useOSStore } from '@/hooks/useOSStore';
-import BootSequence from '@/components/os/BootSequence';
-import LoginScreen from '@/components/os/LoginScreen';
-import TopPanel from '@/components/os/TopPanel';
-import Dock from '@/components/os/Dock';
-import Desktop from '@/components/os/Desktop';
-import WindowManager from '@/components/os/WindowManager';
-import AppLauncher from '@/components/os/AppLauncher';
-import ContextMenu from '@/components/os/ContextMenu';
+import BootSequence        from '@/components/os/BootSequence';
+import LoginScreen         from '@/components/os/LoginScreen';
+import TopPanel            from '@/components/os/TopPanel';
+import Dock                from '@/components/os/Dock';
+import Taskbar             from '@/components/os/Taskbar';
+import Desktop             from '@/components/os/Desktop';
+import WindowManager       from '@/components/os/WindowManager';
+import AppLauncher         from '@/components/os/AppLauncher';
+import ContextMenu         from '@/components/os/ContextMenu';
 import NotificationCenter, { NotificationToasts } from '@/components/os/NotificationCenter';
 import NotificationTrigger from '@/components/os/NotificationTrigger';
 
@@ -19,12 +20,11 @@ export default function OS() {
 
   // ── Boot sequence ────────────────────────────────────────────
   useEffect(() => {
-    if (bootPhase === 'off') {
-      setBootPhase('booting');
-    }
+    if (bootPhase === 'off') setBootPhase('booting');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Sync session → OS store ──────────────────────────────────
+  // ── Sync NextAuth session → OS store ────────────────────────
   useEffect(() => {
     if (status === 'loading' || bootPhase === 'off' || bootPhase === 'booting') return;
     if (status === 'authenticated' && session?.user) {
@@ -36,54 +36,50 @@ export default function OS() {
         userEmail: session.user.email || null,
         userImage: session.user.image || null,
       });
-      // Load cloud settings
       loadSettings(session.user.id);
     } else if (status === 'unauthenticated' && !auth.isGuest) {
       setBootPhase('login');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, status, bootPhase]);
 
-  const loadSettings = useCallback(async (userId: string) => {
+  const loadSettings = useCallback(async (_userId: string) => {
     try {
       const res = await fetch('/api/sync/settings');
       const { settings } = await res.json();
       if (settings) {
-        // Only apply cloud settings if we don't have a locally saved wallpaper
-        // Local localStorage takes priority to avoid wallpaper reset on refresh
-        const localTheme = (() => { try { const t = localStorage.getItem('wlos_theme'); return t ? JSON.parse(t) : null; } catch { return null; } })();
+        const localTheme = (() => {
+          try { const t = localStorage.getItem('wlos_theme'); return t ? JSON.parse(t) : null; }
+          catch { return null; }
+        })();
         setTheme({
-          mode: settings.themeMode || localTheme?.mode,
-          accent: settings.accentColor || localTheme?.accent,
+          mode:     settings.themeMode    || localTheme?.mode,
+          accent:   settings.accentColor  || localTheme?.accent,
           wallpaper: localTheme?.wallpaper || settings.wallpaper,
         });
         if (settings.dockPinned) initDock(settings.dockPinned);
       }
-    } catch { /* offline */ }
+    } catch { /* offline — localStorage serves as fallback */ }
   }, [setTheme, initDock]);
 
-  // ── Theme class on <html> ────────────────────────────────────
+  // ── Apply theme class + CSS vars to <html> ───────────────────
   useEffect(() => {
     document.documentElement.className = theme.mode;
-  }, [theme.mode]);
-
-  // ── Wallpaper CSS var ────────────────────────────────────────
-  useEffect(() => {
-    document.documentElement.style.setProperty('--wallpaper', `url(${theme.wallpaper})`);
     document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--wallpaper', `url(${theme.wallpaper})`);
   }, [theme]);
 
-  const onBootComplete = useCallback(() => {
-    setBootPhase('login');
-  }, [setBootPhase]);
+  const onBootComplete = useCallback(() => setBootPhase('login'), [setBootPhase]);
 
-  // ── Render ───────────────────────────────────────────────────
+  // ── Wallpaper background style ───────────────────────────────
+  const wallBg = theme.wallpaper
+    ? { backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: 'linear-gradient(135deg,#0d0d1a 0%,#1a0a2e 40%,#0d1a2e 100%)' };
+
+  // ── Render phases ────────────────────────────────────────────
   if (bootPhase === 'off' || bootPhase === 'booting') {
     return <BootSequence onComplete={onBootComplete} />;
   }
-
-  const wallBg = theme.wallpaper
-    ? { backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : { background: 'linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 40%, #0d1a2e 100%)' };
 
   if (bootPhase === 'login' || (!auth.isAuthenticated && !auth.isGuest)) {
     return (
@@ -95,8 +91,11 @@ export default function OS() {
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={wallBg}>
-      {/* Subtle overlay for readability */}
-      <div className="absolute inset-0" style={{ background: theme.mode === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.1)' }} />
+      {/* Readability overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: theme.mode === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.12)' }}
+      />
 
       {/* OS Shell */}
       <div className="relative z-0 w-full h-full">
@@ -104,6 +103,8 @@ export default function OS() {
         <Desktop />
         <WindowManager />
         <Dock />
+        {/* ↓ NEW: Taskbar shows active/minimized windows at the very bottom */}
+        <Taskbar />
         <AppLauncher />
         <ContextMenu />
         <NotificationCenter />

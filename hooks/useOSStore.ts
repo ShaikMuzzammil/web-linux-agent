@@ -1,6 +1,6 @@
 'use client';
 // ============================================================
-// WebLinuxOS — Zustand Store
+// WebLinuxOS — Zustand Store  v4.0
 // ============================================================
 
 import { create } from 'zustand';
@@ -56,12 +56,12 @@ const createDockItems = (pinned: string[]): DockItem[] =>
   }));
 
 interface OSStore extends OSState {
-  // Auth actions
+  // Auth
   setBootPhase: (phase: BootPhase) => void;
   login: (auth: Partial<AuthState>) => void;
   logout: () => void;
 
-  // Window actions
+  // Window
   openWindow: (appId: string, title?: string) => void;
   closeWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
@@ -79,17 +79,16 @@ interface OSStore extends OSState {
   addDesktopIcon: (icon: Omit<DesktopIcon, 'id'>) => void;
   removeDesktopIcon: (id: string) => void;
 
-  // App launcher
+  // Launchers
   toggleAppLauncher: () => void;
   setAppLauncher: (open: boolean) => void;
-
-  // Notification center
   toggleNotificationCenter: () => void;
 
   // Notifications
   addNotification: (n: Omit<OSNotification, 'id' | 'timestamp'>) => void;
   removeNotification: (id: string) => void;
   markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
   clearNotifications: () => void;
 
   // Theme
@@ -110,8 +109,10 @@ interface OSStore extends OSState {
   cycleAltTab: () => void;
   endAltTab: () => void;
 
-  // Sync
+  // System
   setSyncing: (v: boolean) => void;
+  setDoNotDisturb: (v: boolean) => void;
+  setNotificationsEnabled: (v: boolean) => void;
 }
 
 export const useOSStore = create<OSStore>()(
@@ -120,7 +121,7 @@ export const useOSStore = create<OSStore>()(
     auth: { isAuthenticated: false, isGuest: false, userId: null, userName: 'User', userEmail: null, userImage: null },
     windows: [],
     desktopIcons: loadFromStorage('wlos_desktop_icons', defaultDesktopIcons),
-    theme: loadFromStorage('wlos_theme', { mode: 'dark' as const, accent: '#E95420', wallpaper: '/wallpapers/default.svg' }),
+    theme: loadFromStorage('wlos_theme', { mode: 'dark' as const, accent: '#E95420', wallpaper: '/wallpapers/default.svg', fontSize: 'medium', animations: true }),
     notifications: [],
     dockItems: createDockItems(DEFAULT_DOCK),
     contextMenu: { visible: false, x: 0, y: 0, type: 'desktop', items: [] },
@@ -131,6 +132,8 @@ export const useOSStore = create<OSStore>()(
     isAltTabbing: false,
     altTabIndex: 0,
     isSyncing: false,
+    doNotDisturb: false,
+    notificationsEnabled: true,
 
     setBootPhase: (phase) => set({ bootPhase: phase }),
 
@@ -156,19 +159,22 @@ export const useOSStore = create<OSStore>()(
         const dock = s.dockItems.map((d) =>
           d.appId === appId ? { ...d, isOpen: true, isFocused: true, bounce: true } : { ...d, isFocused: false }
         );
-        // Send notification when app opens
+        // Only add notification if not in Do Not Disturb mode
         const app = getAppById(appId);
-        const notif: OSNotification = {
-          id: generateId(), appId, appName: app?.name || appId, appIcon: app?.icon || 'App',
-          title: `${app?.name || appId} opened`, message: 'Double-click to bring to front',
-          timestamp: Date.now(), isRead: false,
-        };
+        const notifications = s.doNotDisturb ? s.notifications : (() => {
+          const notif: OSNotification = {
+            id: generateId(), appId, appName: app?.name || appId, appIcon: app?.icon || 'App',
+            title: `${app?.name || appId} opened`, message: 'Click to bring to front',
+            timestamp: Date.now(), isRead: false, type: 'info',
+          };
+          return [notif, ...s.notifications].slice(0, 50);
+        })();
         return {
           windows: [...wins, win],
           activeWindowId: win.id,
           nextZIndex: s.nextZIndex + 1,
           dockItems: dock,
-          notifications: [notif, ...s.notifications].slice(0, 50),
+          notifications,
         };
       }),
 
@@ -282,18 +288,24 @@ export const useOSStore = create<OSStore>()(
     toggleNotificationCenter: () => set((s) => ({ notificationCenterOpen: !s.notificationCenterOpen })),
 
     addNotification: (n) =>
-      set((s) => ({
-        notifications: [
-          { ...n, id: generateId(), timestamp: Date.now() },
-          ...s.notifications,
-        ].slice(0, 50),
-      })),
+      set((s) => {
+        if (s.doNotDisturb) return s;
+        return {
+          notifications: [
+            { ...n, id: generateId(), timestamp: Date.now() },
+            ...s.notifications,
+          ].slice(0, 50),
+        };
+      }),
 
     removeNotification: (id) =>
       set((s) => ({ notifications: s.notifications.filter((n) => n.id !== id) })),
 
     markNotificationRead: (id) =>
       set((s) => ({ notifications: s.notifications.map((n) => n.id === id ? { ...n, isRead: true } : n) })),
+
+    markAllNotificationsRead: () =>
+      set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, isRead: true })) })),
 
     clearNotifications: () => set({ notifications: [] }),
 
@@ -335,8 +347,9 @@ export const useOSStore = create<OSStore>()(
       }),
 
     setSyncing: (v) => set({ isSyncing: v }),
+    setDoNotDisturb: (v) => set({ doNotDisturb: v }),
+    setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
   }))
 );
 
-// Type-safe selector hooks
 export const useOS = () => useOSStore();

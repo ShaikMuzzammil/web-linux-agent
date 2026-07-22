@@ -1,5 +1,5 @@
 // ============================================================
-// WebLinuxOS — Core Type Definitions
+// WebLinuxOS — Core Type Definitions  v4.0
 // ============================================================
 
 export interface Position { x: number; y: number }
@@ -78,9 +78,15 @@ export interface Theme {
   mode: ThemeMode;
   accent: string;
   wallpaper: string;
+  fontSize?: 'small' | 'medium' | 'large';
+  animations?: boolean;
+  dockPosition?: 'bottom' | 'left';
+  transparency?: number;
 }
 
 // ── Notifications ────────────────────────────────────────────
+export type NotificationType = 'info' | 'success' | 'warning' | 'error';
+
 export interface OSNotification {
   id: string;
   appId: string;
@@ -90,6 +96,7 @@ export interface OSNotification {
   message: string;
   timestamp: number;
   isRead: boolean;
+  type?: NotificationType;
   actions?: NotificationAction[];
 }
 
@@ -160,6 +167,8 @@ export interface OSState {
   isAltTabbing: boolean;
   altTabIndex: number;
   isSyncing: boolean;
+  doNotDisturb: boolean;
+  notificationsEnabled: boolean;
 }
 
 // ── Notes ────────────────────────────────────────────────────
@@ -254,4 +263,5 @@ export interface UserPreferences {
   fontSize: 'small' | 'medium' | 'large';
   animations: boolean;
   notifications: boolean;
+  doNotDisturb: boolean;
 }

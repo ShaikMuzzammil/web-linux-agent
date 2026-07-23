@@ -1,27 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
   <defs>
-    <radialGradient id="sky" cx="50%" cy="0%" r="100%">
-      <stop offset="0%" stop-color="#0a0a1a"/>
-      <stop offset="100%" stop-color="#020208"/>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#010812"/>
+      <stop offset="50%" stop-color="#031520"/>
+      <stop offset="100%" stop-color="#0a2515"/>
+    </linearGradient>
+    <radialGradient id="a1" cx="30%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#00ff88" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
     </radialGradient>
-    <filter id="blur1"><feGaussianBlur stdDeviation="40"/></filter>
-    <filter id="blur2"><feGaussianBlur stdDeviation="60"/></filter>
+    <radialGradient id="a2" cx="60%" cy="20%" r="55%">
+      <stop offset="0%" stop-color="#00ccff" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#00ccff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="a3" cx="80%" cy="35%" r="45%">
+      <stop offset="0%" stop-color="#aa00ff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#aa00ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="b80"><feGaussianBlur stdDeviation="80"/></filter>
+    <filter id="b40"><feGaussianBlur stdDeviation="40"/></filter>
+    <filter id="b15"><feGaussianBlur stdDeviation="15"/></filter>
   </defs>
   <rect width="1920" height="1080" fill="url(#sky)"/>
   <!-- Aurora bands -->
-  <ellipse cx="960" cy="200" rx="900" ry="300" fill="rgba(0,255,150,0.12)" filter="url(#blur1)"/>
-  <ellipse cx="700" cy="280" rx="700" ry="200" fill="rgba(0,200,255,0.10)" filter="url(#blur2)"/>
-  <ellipse cx="1200" cy="180" rx="600" ry="180" fill="rgba(100,0,255,0.13)" filter="url(#blur1)"/>
-  <ellipse cx="500" cy="350" rx="500" ry="150" fill="rgba(0,255,180,0.08)" filter="url(#blur2)"/>
-  <ellipse cx="1400" cy="300" rx="500" ry="160" fill="rgba(50,100,255,0.10)" filter="url(#blur1)"/>
+  <ellipse cx="576" cy="324" rx="1100" ry="350" fill="url(#a1)" filter="url(#b80)"/>
+  <ellipse cx="1152" cy="216" rx="900" ry="280" fill="url(#a2)" filter="url(#b80)"/>
+  <ellipse cx="1536" cy="378" rx="800" ry="260" fill="url(#a3)" filter="url(#b80)"/>
+  <!-- Aurora streaks -->
+  <path d="M 0 300 Q 300 100 600 350 Q 900 550 1200 280 Q 1500 50 1920 300" stroke="#00ff8855" stroke-width="80" fill="none" filter="url(#b40)"/>
+  <path d="M 0 400 Q 400 180 700 420 Q 1000 620 1350 350 Q 1650 120 1920 380" stroke="#00ccff44" stroke-width="60" fill="none" filter="url(#b40)"/>
+  <path d="M 100 200 Q 450 80 750 250 Q 1050 420 1380 200 Q 1680 30 1920 220" stroke="#aa00ff33" stroke-width="50" fill="none" filter="url(#b40)"/>
   <!-- Stars -->
-  <g fill="white" opacity="0.6">
-    <circle cx="100" cy="50" r="1"/><circle cx="300" cy="80" r="0.8"/><circle cx="500" cy="30" r="1.2"/>
-    <circle cx="700" cy="60" r="0.9"/><circle cx="900" cy="40" r="1"/><circle cx="1100" cy="70" r="0.8"/>
-    <circle cx="1300" cy="50" r="1.1"/><circle cx="1500" cy="35" r="0.9"/><circle cx="1700" cy="65" r="1"/>
-    <circle cx="200" cy="120" r="0.7"/><circle cx="800" cy="100" r="1.3"/><circle cx="1600" cy="110" r="0.8"/>
+  <g fill="white" opacity="0.7">
+    <circle cx="80" cy="50" r="0.8"/><circle cx="200" cy="30" r="1"/><circle cx="380" cy="70" r="0.7"/>
+    <circle cx="540" cy="25" r="0.9"/><circle cx="720" cy="55" r="0.8"/><circle cx="900" cy="35" r="1"/>
+    <circle cx="1080" cy="65" r="0.7"/><circle cx="1260" cy="20" r="0.9"/><circle cx="1440" cy="50" r="0.8"/>
+    <circle cx="1620" cy="35" r="1"/><circle cx="1800" cy="60" r="0.7"/>
+    <circle cx="150" cy="150" r="0.9"/><circle cx="420" cy="180" r="0.7"/><circle cx="660" cy="140" r="1"/>
+    <circle cx="870" cy="170" r="0.8"/><circle cx="1100" cy="145" r="0.9"/><circle cx="1350" cy="165" r="0.7"/>
+    <circle cx="1580" cy="155" r="1"/><circle cx="1820" cy="145" r="0.8"/>
   </g>
-  <!-- Ground silhouette -->
-  <rect x="0" y="900" width="1920" height="180" fill="rgba(0,0,0,0.5)"/>
-  <path d="M0,920 Q200,880 400,910 Q600,940 800,900 Q1000,860 1200,890 Q1400,920 1600,900 Q1800,880 1920,910 L1920,1080 L0,1080Z" fill="rgba(0,0,0,0.6)"/>
+  <!-- Mountain silhouette -->
+  <path d="M0 880 L120 720 L240 800 L380 640 L520 760 L680 580 L840 720 L960 560 L1080 700 L1240 580 L1400 720 L1560 600 L1720 740 L1920 620 L1920 1080 L0 1080 Z" fill="#020e08"/>
+  <path d="M0 950 L200 860 L400 900 L600 830 L800 870 L1000 820 L1200 860 L1400 840 L1600 870 L1800 850 L1920 880 L1920 1080 L0 1080 Z" fill="#031208"/>
+  <!-- Foreground snow shine -->
+  <ellipse cx="960" cy="1050" rx="800" ry="60" fill="#00ff8818" filter="url(#b15)"/>
 </svg>

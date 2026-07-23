@@ -1,33 +1,50 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
   <defs>
-    <radialGradient id="ubg" cx="30%" cy="60%" r="80%">
-      <stop offset="0%" stop-color="#1a0a05"/>
-      <stop offset="100%" stop-color="#080506"/>
+    <radialGradient id="bg" cx="25%" cy="80%" r="80%">
+      <stop offset="0%" stop-color="#2d0e05"/>
+      <stop offset="40%" stop-color="#1a0804"/>
+      <stop offset="100%" stop-color="#080305"/>
     </radialGradient>
-    <filter id="ublur"><feGaussianBlur stdDeviation="80"/></filter>
+    <radialGradient id="gOrange" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E95420" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#E95420" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gWarm" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c8360a" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#c8360a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur90"><feGaussianBlur stdDeviation="90"/></filter>
+    <filter id="blur50"><feGaussianBlur stdDeviation="50"/></filter>
+    <filter id="blur25"><feGaussianBlur stdDeviation="25"/></filter>
+    <filter id="blur8"><feGaussianBlur stdDeviation="8"/></filter>
   </defs>
-  <rect width="1920" height="1080" fill="url(#ubg)"/>
-  <circle cx="400" cy="700" r="500" fill="rgba(233,84,32,0.08)" filter="url(#ublur)"/>
-  <circle cx="1600" cy="300" r="400" fill="rgba(180,50,10,0.06)" filter="url(#ublur)"/>
-  <!-- Grid lines -->
-  <g stroke="rgba(233,84,32,0.04)" strokeWidth="1">
-    <line x1="0" y1="200" x2="1920" y2="200"/>
-    <line x1="0" y1="400" x2="1920" y2="400"/>
-    <line x1="0" y1="600" x2="1920" y2="600"/>
-    <line x1="0" y1="800" x2="1920" y2="800"/>
-    <line x1="320" y1="0" x2="320" y2="1080"/>
-    <line x1="640" y1="0" x2="640" y2="1080"/>
-    <line x1="960" y1="0" x2="960" y2="1080"/>
-    <line x1="1280" y1="0" x2="1280" y2="1080"/>
-    <line x1="1600" y1="0" x2="1600" y2="1080"/>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <!-- Main glow sources -->
+  <ellipse cx="300"  cy="900" rx="800" ry="600" fill="url(#gOrange)" filter="url(#blur90)"/>
+  <ellipse cx="1700" cy="200" rx="600" ry="450" fill="url(#gWarm)"   filter="url(#blur90)"/>
+  <ellipse cx="960"  cy="540" rx="400" ry="300" fill="url(#gOrange)" filter="url(#blur50)" opacity="0.4"/>
+  <!-- Subtle circle rings — Ubuntu style -->
+  <circle cx="250" cy="870" r="300" fill="none" stroke="#E9542015" stroke-width="2" filter="url(#blur8)"/>
+  <circle cx="250" cy="870" r="450" fill="none" stroke="#E9542008" stroke-width="2" filter="url(#blur8)"/>
+  <circle cx="250" cy="870" r="600" fill="none" stroke="#E9542005" stroke-width="2" filter="url(#blur8)"/>
+  <!-- Ubuntu logo area subtle glow -->
+  <ellipse cx="960" cy="540" rx="150" ry="150" fill="#E9542010" filter="url(#blur25)"/>
+  <!-- Stars -->
+  <g fill="white" opacity="0.35">
+    <circle cx="100" cy="50" r="0.7"/><circle cx="280" cy="80" r="0.9"/><circle cx="460" cy="40" r="0.6"/>
+    <circle cx="650" cy="70" r="0.8"/><circle cx="840" cy="45" r="0.7"/><circle cx="1020" cy="80" r="0.9"/>
+    <circle cx="1210" cy="55" r="0.6"/><circle cx="1400" cy="75" r="0.8"/><circle cx="1590" cy="45" r="0.7"/>
+    <circle cx="1780" cy="70" r="0.9"/><circle cx="160" cy="200" r="0.8"/><circle cx="380" cy="230" r="0.6"/>
+    <circle cx="560" cy="185" r="0.9"/><circle cx="770" cy="215" r="0.7"/><circle cx="950" cy="195" r="0.8"/>
+    <circle cx="1140" cy="225" r="0.6"/><circle cx="1330" cy="190" r="0.9"/><circle cx="1520" cy="220" r="0.7"/>
+    <circle cx="1700" cy="185" r="0.8"/><circle cx="1880" cy="210" r="0.6"/>
   </g>
-  <!-- Ubuntu circle watermark -->
-  <g transform="translate(960,540)" opacity="0.04">
-    <circle cx="0" cy="-160" r="60" fill="#E95420"/>
-    <circle cx="-138" cy="80" r="60" fill="#E95420"/>
-    <circle cx="138" cy="80" r="60" fill="#E95420"/>
-    <path d="M0,-100 A120,120 0 0 1 103,50" stroke="#E95420" strokeWidth="20" fill="none"/>
-    <path d="M103,50 A120,120 0 0 1 -103,50" stroke="#E95420" strokeWidth="20" fill="none"/>
-    <path d="M-103,50 A120,120 0 0 1 0,-100" stroke="#E95420" strokeWidth="20" fill="none"/>
-  </g>
+  <!-- Fine diagonal texture lines -->
+  <line x1="0" y1="0" x2="400" y2="1080" stroke="rgba(255,255,255,0.008)" stroke-width="1"/>
+  <line x1="200" y1="0" x2="600" y2="1080" stroke="rgba(255,255,255,0.006)" stroke-width="1"/>
+  <line x1="500" y1="0" x2="900" y2="1080" stroke="rgba(255,255,255,0.007)" stroke-width="1"/>
+  <line x1="800" y1="0" x2="1200" y2="1080" stroke="rgba(255,255,255,0.006)" stroke-width="1"/>
+  <line x1="1100" y1="0" x2="1500" y2="1080" stroke="rgba(255,255,255,0.007)" stroke-width="1"/>
+  <line x1="1400" y1="0" x2="1800" y2="1080" stroke="rgba(255,255,255,0.006)" stroke-width="1"/>
+  <line x1="1700" y1="0" x2="2100" y2="1080" stroke="rgba(255,255,255,0.008)" stroke-width="1"/>
 </svg>

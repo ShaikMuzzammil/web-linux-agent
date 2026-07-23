@@ -18,13 +18,13 @@ export default function OS() {
   const { data: session, status } = useSession();
   const { bootPhase, theme, auth, setBootPhase, login, initDock, setTheme } = useOSStore();
 
-  // ── Boot sequence ────────────────────────────────────────────
+  // ── Boot sequence ──────────────────────────────────────────
   useEffect(() => {
     if (bootPhase === 'off') setBootPhase('booting');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Sync NextAuth session → OS store ────────────────────────
+  // ── Sync NextAuth session → OS store ──────────────────────
   useEffect(() => {
     if (status === 'loading' || bootPhase === 'off' || bootPhase === 'booting') return;
     if (status === 'authenticated' && session?.user) {
@@ -53,8 +53,8 @@ export default function OS() {
           catch { return null; }
         })();
         setTheme({
-          mode:     settings.themeMode    || localTheme?.mode,
-          accent:   settings.accentColor  || localTheme?.accent,
+          mode:      settings.themeMode   || localTheme?.mode,
+          accent:    settings.accentColor || localTheme?.accent,
           wallpaper: localTheme?.wallpaper || settings.wallpaper,
         });
         if (settings.dockPinned) initDock(settings.dockPinned);
@@ -62,21 +62,20 @@ export default function OS() {
     } catch { /* offline — localStorage serves as fallback */ }
   }, [setTheme, initDock]);
 
-  // ── Apply theme class + CSS vars to <html> ───────────────────
+  // ── Apply theme to <html> ─────────────────────────────────
   useEffect(() => {
     document.documentElement.className = theme.mode;
-    document.documentElement.style.setProperty('--accent', theme.accent);
+    document.documentElement.style.setProperty('--accent',    theme.accent);
     document.documentElement.style.setProperty('--wallpaper', `url(${theme.wallpaper})`);
   }, [theme]);
 
   const onBootComplete = useCallback(() => setBootPhase('login'), [setBootPhase]);
 
-  // ── Wallpaper background style ───────────────────────────────
+  // ── Wallpaper style ────────────────────────────────────────
   const wallBg = theme.wallpaper
-    ? { backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? { backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
     : { background: 'linear-gradient(135deg,#0d0d1a 0%,#1a0a2e 40%,#0d1a2e 100%)' };
 
-  // ── Render phases ────────────────────────────────────────────
   if (bootPhase === 'off' || bootPhase === 'booting') {
     return <BootSequence onComplete={onBootComplete} />;
   }
@@ -91,10 +90,14 @@ export default function OS() {
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={wallBg}>
-      {/* Readability overlay */}
+      {/* Subtle readability vignette — much lighter so wallpapers are visible */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: theme.mode === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.12)' }}
+        style={{
+          background: theme.mode === 'dark'
+            ? 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.18) 100%)'
+            : 'rgba(255,255,255,0.08)',
+        }}
       />
 
       {/* OS Shell */}
@@ -103,7 +106,6 @@ export default function OS() {
         <Desktop />
         <WindowManager />
         <Dock />
-        {/* ↓ NEW: Taskbar shows active/minimized windows at the very bottom */}
         <Taskbar />
         <AppLauncher />
         <ContextMenu />

@@ -1,24 +1,69 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
   <defs>
-    <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#020d18"/>
-      <stop offset="50%" stop-color="#041520"/>
-      <stop offset="100%" stop-color="#021018"/>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="0.5">
+      <stop offset="0%" stop-color="#010810"/>
+      <stop offset="60%" stop-color="#041525"/>
+      <stop offset="100%" stop-color="#051c35"/>
     </linearGradient>
-    <filter id="wave"><feGaussianBlur stdDeviation="20"/></filter>
-    <filter id="waveblur"><feGaussianBlur stdDeviation="50"/></filter>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#041830"/>
+      <stop offset="100%" stop-color="#020c18"/>
+    </linearGradient>
+    <radialGradient id="moonLight" cx="50%" cy="100%" r="80%">
+      <stop offset="0%" stop-color="#ffffff20"/>
+      <stop offset="100%" stop-color="#ffffff00"/>
+    </radialGradient>
+    <filter id="blur80"><feGaussianBlur stdDeviation="80"/></filter>
+    <filter id="blur40"><feGaussianBlur stdDeviation="40"/></filter>
+    <filter id="blur5"><feGaussianBlur stdDeviation="5"/></filter>
   </defs>
-  <rect width="1920" height="1080" fill="url(#ocean)"/>
-  <ellipse cx="960" cy="400" rx="1000" ry="300" fill="rgba(0,150,180,0.10)" filter="url(#waveblur)"/>
-  <ellipse cx="500" cy="700" rx="600" ry="200" fill="rgba(0,180,200,0.08)" filter="url(#waveblur)"/>
-  <ellipse cx="1400" cy="600" rx="500" ry="180" fill="rgba(0,100,160,0.10)" filter="url(#waveblur)"/>
-  <!-- Wave lines -->
-  <path d="M0,600 Q240,560 480,600 Q720,640 960,600 Q1200,560 1440,600 Q1680,640 1920,600" stroke="rgba(0,200,255,0.08)" strokeWidth="2" fill="none"/>
-  <path d="M0,650 Q240,610 480,650 Q720,690 960,650 Q1200,610 1440,650 Q1680,690 1920,650" stroke="rgba(0,180,220,0.06)" strokeWidth="1.5" fill="none"/>
-  <path d="M0,700 Q240,660 480,700 Q720,740 960,700 Q1200,660 1440,700 Q1680,740 1920,700" stroke="rgba(0,160,200,0.05)" strokeWidth="1" fill="none"/>
-  <!-- Stars reflection -->
-  <circle cx="400" cy="200" r="1" fill="white" opacity="0.5"/>
-  <circle cx="800" cy="150" r="1.5" fill="white" opacity="0.4"/>
-  <circle cx="1200" cy="180" r="1" fill="white" opacity="0.6"/>
-  <circle cx="1600" cy="120" r="1.2" fill="white" opacity="0.5"/>
+  <rect width="1920" height="540" fill="url(#sky)"/>
+  <rect y="540" width="1920" height="540" fill="url(#sea)"/>
+  <!-- Moon -->
+  <circle cx="960" cy="140" r="70" fill="#fffde8" opacity="0.95"/>
+  <circle cx="975" cy="128" r="70" fill="#041525"/>
+  <circle cx="960" cy="140" r="90" fill="#ffffff12" filter="url(#blur40)"/>
+  <circle cx="960" cy="140" r="180" fill="#ffffff06" filter="url(#blur80)"/>
+  <!-- Stars -->
+  <g fill="white">
+    <circle cx="80"   cy="40"  r="0.8" opacity="0.85"/><circle cx="200"  cy="70"  r="0.6" opacity="0.9"/>
+    <circle cx="320"  cy="30"  r="0.9" opacity="0.8"/><circle cx="440"  cy="65"  r="0.7" opacity="0.85"/>
+    <circle cx="560"  cy="45"  r="0.8" opacity="0.9"/><circle cx="680"  cy="25"  r="0.6" opacity="0.8"/>
+    <circle cx="800"  cy="60"  r="0.9" opacity="0.85"/><circle cx="1120" cy="55"  r="0.8" opacity="0.9"/>
+    <circle cx="1240" cy="30"  r="0.6" opacity="0.85"/><circle cx="1360" cy="65"  r="0.9" opacity="0.8"/>
+    <circle cx="1480" cy="40"  r="0.7" opacity="0.85"/><circle cx="1600" cy="70"  r="0.8" opacity="0.9"/>
+    <circle cx="1720" cy="35"  r="0.6" opacity="0.8"/><circle cx="1840" cy="60"  r="0.9" opacity="0.85"/>
+    <circle cx="140"  cy="160" r="0.7" opacity="0.7"/><circle cx="280"  cy="195" r="0.9" opacity="0.75"/>
+    <circle cx="420"  cy="150" r="0.6" opacity="0.8"/><circle cx="580"  cy="185" r="0.8" opacity="0.7"/>
+    <circle cx="740"  cy="160" r="0.7" opacity="0.75"/><circle cx="1180" cy="175" r="0.9" opacity="0.7"/>
+    <circle cx="1340" cy="155" r="0.6" opacity="0.8"/><circle cx="1500" cy="185" r="0.8" opacity="0.75"/>
+    <circle cx="1660" cy="150" r="0.7" opacity="0.7"/><circle cx="1820" cy="180" r="0.9" opacity="0.75"/>
+    <circle cx="200"  cy="300" r="0.8" opacity="0.6"/><circle cx="360"  cy="330" r="0.6" opacity="0.65"/>
+    <circle cx="520"  cy="295" r="0.9" opacity="0.6"/><circle cx="680"  cy="325" r="0.7" opacity="0.65"/>
+    <circle cx="1240" cy="310" r="0.8" opacity="0.6"/><circle cx="1400" cy="335" r="0.6" opacity="0.65"/>
+    <circle cx="1560" cy="300" r="0.9" opacity="0.6"/><circle cx="1720" cy="320" r="0.7" opacity="0.65"/>
+  </g>
+  <!-- Horizon glow -->
+  <ellipse cx="960" cy="540" rx="600" ry="60" fill="#ffffff08" filter="url(#blur40)"/>
+  <!-- Ocean surface -->
+  <rect y="535" width="1920" height="8" fill="#0a3060" opacity="0.5"/>
+  <!-- Moon reflection path -->
+  <ellipse cx="960" cy="700" rx="40" ry="200" fill="#ffffff15" filter="url(#blur5)"/>
+  <ellipse cx="960" cy="600" rx="80" ry="60" fill="#ffffff12" filter="url(#blur5)"/>
+  <!-- Wave highlights -->
+  <path d="M0 560 Q240 550 480 558 Q720 566 960 558 Q1200 550 1440 558 Q1680 566 1920 560" stroke="#ffffff15" stroke-width="2" fill="none"/>
+  <path d="M0 580 Q300 570 600 578 Q900 586 1200 578 Q1500 570 1800 578 L1920 580" stroke="#ffffff10" stroke-width="1.5" fill="none"/>
+  <path d="M0 605 Q250 596 500 603 Q750 610 1000 603 Q1250 596 1500 603 Q1750 610 1920 605" stroke="#ffffff08" stroke-width="1" fill="none"/>
+  <!-- Deep water shimmer -->
+  <g fill="#ffffff" opacity="0.08">
+    <ellipse cx="100"  cy="650" rx="30" ry="3"/><ellipse cx="350"  cy="680" rx="25" ry="3"/>
+    <ellipse cx="580"  cy="660" rx="35" ry="3"/><ellipse cx="820"  cy="700" rx="20" ry="3"/>
+    <ellipse cx="1050" cy="670" rx="30" ry="3"/><ellipse cx="1290" cy="690" rx="25" ry="3"/>
+    <ellipse cx="1520" cy="655" rx="35" ry="3"/><ellipse cx="1750" cy="675" rx="20" ry="3"/>
+  </g>
+  <!-- Silhouette rocks -->
+  <ellipse cx="150"  cy="570" rx="80" ry="30" fill="#020c18"/>
+  <ellipse cx="1770" cy="560" rx="100" ry="40" fill="#020c18"/>
+  <!-- Foreground dark water -->
+  <rect y="900" width="1920" height="180" fill="#010810" opacity="0.8"/>
 </svg>

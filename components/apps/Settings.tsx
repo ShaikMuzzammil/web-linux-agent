@@ -304,62 +304,105 @@ export default function Settings() {
         {section === 'wallpaper' && (
           <div className="p-5 space-y-4">
             <h2 className="text-sm font-bold">Wallpaper</h2>
+            <p className="text-[11px] opacity-40 -mt-2">Click to set as desktop background</p>
+
+            {/* Live wallpaper preview strip */}
+            <div
+              className="w-full rounded-xl overflow-hidden flex items-center justify-center"
+              style={{
+                aspectRatio: '16/5',
+                backgroundImage: `url(${theme.wallpaper})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                border: `1px solid ${border}`,
+                position: 'relative',
+              }}
+            >
+              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.15)' }}/>
+              <span className="relative text-white text-xs font-medium opacity-70 px-3 py-1 rounded-full" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                Current Wallpaper
+              </span>
+            </div>
+
+            {/* Wallpaper grid with actual image thumbnails */}
             <div className="grid grid-cols-3 gap-3">
-              {WALLPAPERS.map(w => (
-                <button
-                  key={w.path}
-                  onClick={() => saveWallpaper(w.path)}
-                  className="relative flex flex-col items-center gap-1.5 group"
-                >
-                  <div
-                    className="w-full rounded-xl overflow-hidden transition-all group-hover:scale-[1.02]"
-                    style={{
-                      aspectRatio: '16/9',
-                      background: w.preview,
-                      border: theme.wallpaper === w.path ? `2px solid ${accent}` : `2px solid ${border}`,
-                      boxShadow: theme.wallpaper === w.path ? `0 0 0 2px ${accent}40` : 'none',
-                    }}
+              {WALLPAPERS.map(w => {
+                const isActive = theme.wallpaper === w.path;
+                return (
+                  <button
+                    key={w.path}
+                    onClick={() => saveWallpaper(w.path)}
+                    className="relative flex flex-col items-center gap-1.5 group"
                   >
-                    {theme.wallpaper === w.path && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-6 h-6 rounded-full bg-white/90 flex items-center justify-center">
-                          <Check size={13} style={{ color: accent }} strokeWidth={3} />
+                    <div
+                      className="w-full rounded-xl overflow-hidden transition-all duration-200 group-hover:scale-[1.03] relative"
+                      style={{
+                        aspectRatio: '16/9',
+                        border: isActive ? `2.5px solid ${accent}` : `1.5px solid ${border}`,
+                        boxShadow: isActive ? `0 0 0 3px ${accent}30, 0 4px 16px rgba(0,0,0,0.3)` : '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      <img
+                        src={w.path}
+                        alt={w.name}
+                        className="w-full h-full object-cover"
+                        style={{ display: 'block' }}
+                        loading="lazy"
+                        onError={e => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          (e.currentTarget.parentElement as HTMLDivElement).style.background = w.preview;
+                        }}
+                      />
+                      {isActive && (
+                        <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.15)' }}>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg" style={{ background: accent }}>
+                            <Check size={14} className="text-white" strokeWidth={3} />
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] opacity-55">{w.name}</span>
-                </button>
-              ))}
+                      )}
+                    </div>
+                    <span className="text-[10px]" style={{ color: isActive ? accent : undefined, fontWeight: isActive ? 600 : 400, opacity: isActive ? 1 : 0.5 }}>
+                      {w.name}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <Card className="p-4">
-              <p className="text-[11px] font-semibold mb-2 opacity-55 uppercase tracking-wider">Custom URL</p>
+              <p className="text-[11px] font-semibold mb-3 opacity-55 uppercase tracking-wider">Custom Wallpaper URL</p>
               <div className="flex gap-2">
                 <input
                   value={customUrl}
                   onChange={e => setCustomUrl(e.target.value)}
                   placeholder="https://example.com/wallpaper.jpg"
-                  className="flex-1 px-3 py-1.5 rounded-lg text-[11px] outline-none"
+                  className="flex-1 px-3 py-2 rounded-lg text-[11px] outline-none"
                   style={{
                     background: dk ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                     border: `1px solid ${border}`,
                     color: text,
                     caretColor: accent,
                   }}
-                  onKeyDown={e => { if (e.key === 'Enter' && customUrl) saveWallpaper(customUrl); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && customUrl) { saveWallpaper(customUrl); setCustomUrl(''); } }}
                 />
                 <button
-                  onClick={() => { if (customUrl) saveWallpaper(customUrl); }}
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-80"
+                  onClick={() => { if (customUrl) { saveWallpaper(customUrl); setCustomUrl(''); } }}
+                  className="px-4 py-2 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-80 flex-shrink-0"
                   style={{ background: accent }}
                 >
-                  Set
+                  Apply
                 </button>
               </div>
               {customUrl && (
-                <p className="text-[10px] mt-1.5 opacity-35">Press Set or Enter to apply</p>
+                <p className="text-[10px] mt-1.5 opacity-35">Supports .jpg, .png, .svg, .webp URLs</p>
               )}
+              <button
+                onClick={() => saveWallpaper('/wallpapers/default.svg')}
+                className="mt-3 text-[10px] hover:opacity-70 transition-opacity"
+                style={{ color: accent }}
+              >
+                ↩ Reset to Default
+              </button>
             </Card>
           </div>
         )}

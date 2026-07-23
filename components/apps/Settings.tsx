@@ -116,12 +116,17 @@ export default function Settings() {
 
   const [section, setSection]         = useState<Section>('appearance');
   const [fontSize, setFontSize]       = useState<'small'|'medium'|'large'>('medium');
-  const [customUrl, setCustomUrl]     = useState('');
   const [dockSearch, setDockSearch]   = useState('');
   const [notifSound, setNotifSound]   = useState(true);
   const [notifBadges, setNotifBadges] = useState(true);
   const [notifPreview, setNotifPreview] = useState(true);
   const [copyTip, setCopyTip]         = useState('');
+  const [linksUnlocked, setLinksUnlocked] = useState(false);
+  const [unlocking, setUnlocking]         = useState(false);
+  const [wpUrlInput, setWpUrlInput]       = useState('');
+  const [wpPreviewUrl, setWpPreviewUrl]   = useState('');
+  const [wpPreviewOk, setWpPreviewOk]     = useState<boolean|null>(null);
+  const [wpUploading, setWpUploading]     = useState(false);
 
   const applyFontSize = useCallback((size: 'small'|'medium'|'large') => {
     const map = { small: '12px', medium: '13px', large: '15px' };
@@ -303,106 +308,201 @@ export default function Settings() {
         {/* ═══════════════ WALLPAPER ═══════════════ */}
         {section === 'wallpaper' && (
           <div className="p-5 space-y-4">
-            <h2 className="text-sm font-bold">Wallpaper</h2>
-            <p className="text-[11px] opacity-40 -mt-2">Click to set as desktop background</p>
-
-            {/* Live wallpaper preview strip */}
-            <div
-              className="w-full rounded-xl overflow-hidden flex items-center justify-center"
-              style={{
-                aspectRatio: '16/5',
-                backgroundImage: `url(${theme.wallpaper})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                border: `1px solid ${border}`,
-                position: 'relative',
-              }}
-            >
-              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.15)' }}/>
-              <span className="relative text-white text-xs font-medium opacity-70 px-3 py-1 rounded-full" style={{ background: 'rgba(0,0,0,0.4)' }}>
-                Current Wallpaper
-              </span>
+            <style>{`
+              @keyframes wpFadeIn { from{opacity:0;transform:scale(0.98)} to{opacity:1;transform:scale(1)} }
+              @keyframes wpCheck  { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
+            `}</style>
+            <div>
+              <h2 className="text-sm font-bold">Wallpaper</h2>
+              <p className="text-[11px] mt-0.5 opacity-40">Personalise your desktop background</p>
             </div>
 
-            {/* Wallpaper grid with actual image thumbnails */}
-            <div className="grid grid-cols-3 gap-3">
-              {WALLPAPERS.map(w => {
-                const isActive = theme.wallpaper === w.path;
-                return (
-                  <button
-                    key={w.path}
-                    onClick={() => saveWallpaper(w.path)}
-                    className="relative flex flex-col items-center gap-1.5 group"
-                  >
-                    <div
-                      className="w-full rounded-xl overflow-hidden transition-all duration-200 group-hover:scale-[1.03] relative"
-                      style={{
-                        aspectRatio: '16/9',
-                        border: isActive ? `2.5px solid ${accent}` : `1.5px solid ${border}`,
-                        boxShadow: isActive ? `0 0 0 3px ${accent}30, 0 4px 16px rgba(0,0,0,0.3)` : '0 2px 8px rgba(0,0,0,0.2)',
-                      }}
-                    >
-                      <img
-                        src={w.path}
-                        alt={w.name}
-                        className="w-full h-full object-cover"
-                        style={{ display: 'block' }}
-                        loading="lazy"
-                        onError={e => {
-                          (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          (e.currentTarget.parentElement as HTMLDivElement).style.background = w.preview;
-                        }}
-                      />
-                      {isActive && (
-                        <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.15)' }}>
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg" style={{ background: accent }}>
-                            <Check size={14} className="text-white" strokeWidth={3} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-[10px]" style={{ color: isActive ? accent : undefined, fontWeight: isActive ? 600 : 400, opacity: isActive ? 1 : 0.5 }}>
-                      {w.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <Card className="p-4">
-              <p className="text-[11px] font-semibold mb-3 opacity-55 uppercase tracking-wider">Custom Wallpaper URL</p>
-              <div className="flex gap-2">
-                <input
-                  value={customUrl}
-                  onChange={e => setCustomUrl(e.target.value)}
-                  placeholder="https://example.com/wallpaper.jpg"
-                  className="flex-1 px-3 py-2 rounded-lg text-[11px] outline-none"
-                  style={{
-                    background: dk ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                    border: `1px solid ${border}`,
-                    color: text,
-                    caretColor: accent,
-                  }}
-                  onKeyDown={e => { if (e.key === 'Enter' && customUrl) { saveWallpaper(customUrl); setCustomUrl(''); } }}
-                />
-                <button
-                  onClick={() => { if (customUrl) { saveWallpaper(customUrl); setCustomUrl(''); } }}
-                  className="px-4 py-2 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-80 flex-shrink-0"
-                  style={{ background: accent }}
-                >
-                  Apply
-                </button>
+            {/* ── Live current wallpaper preview ── */}
+            <div className="relative w-full rounded-xl overflow-hidden"
+              style={{ aspectRatio: '16/5', backgroundImage: `url(${theme.wallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center', border: `1px solid ${border}` }}>
+              <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.22)' }} />
+              <div className="absolute inset-0 flex items-end p-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}>
+                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: accent }} />
+                  <span className="text-white text-[10px] font-medium">Active Wallpaper</span>
+                </div>
               </div>
-              {customUrl && (
-                <p className="text-[10px] mt-1.5 opacity-35">Supports .jpg, .png, .svg, .webp URLs</p>
+            </div>
+
+            {/* ── Preset gallery ── */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider opacity-40 mb-2">Preset Wallpapers</p>
+              <div className="grid grid-cols-3 gap-2.5">
+                {WALLPAPERS.map(w => {
+                  const isActive = theme.wallpaper === w.path;
+                  return (
+                    <button key={w.path} onClick={() => saveWallpaper(w.path)}
+                      className="relative flex flex-col items-center gap-1.5 group">
+                      <div className="w-full rounded-xl overflow-hidden relative transition-all duration-200 group-hover:scale-[1.04]"
+                        style={{
+                          aspectRatio: '16/9',
+                          border: isActive ? `2.5px solid ${accent}` : `1.5px solid ${border}`,
+                          boxShadow: isActive ? `0 0 0 3px ${accent}28, 0 4px 16px rgba(0,0,0,0.3)` : '0 2px 6px rgba(0,0,0,0.2)',
+                        }}>
+                        <img src={w.path} alt={w.name} className="w-full h-full object-cover" loading="lazy"
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; (e.currentTarget.parentElement as HTMLDivElement).style.background=w.preview; }} />
+                        {isActive && (
+                          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.18)' }}>
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg" style={{ background: accent, animation: 'wpCheck 0.3s ease' }}>
+                              <Check size={14} className="text-white" strokeWidth={3} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-medium" style={{ color: isActive ? accent : undefined, opacity: isActive ? 1 : 0.45 }}>{w.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── URL Input with live preview ── */}
+            <Card className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider opacity-45 mb-3">Custom URL</p>
+              <div className="flex gap-2 mb-2">
+                <div className="flex-1 relative">
+                  <input
+                    value={wpUrlInput}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setWpUrlInput(val);
+                      setWpPreviewOk(null);
+                      if (val.trim()) {
+                        setWpPreviewUrl(val.trim());
+                      } else {
+                        setWpPreviewUrl('');
+                      }
+                    }}
+                    placeholder="https://example.com/wallpaper.jpg"
+                    className="w-full px-3 py-2 rounded-lg text-[11px] outline-none pr-8"
+                    style={{
+                      background: dk ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                      border: `1px solid ${wpPreviewOk === true ? '#22c55e' : wpPreviewOk === false ? '#ef4444' : border}`,
+                      color: text, caretColor: accent, transition: 'border-color 0.2s',
+                    }}
+                    onKeyDown={e => { if (e.key === 'Enter' && wpUrlInput) { saveWallpaper(wpUrlInput); setWpUrlInput(''); setWpPreviewUrl(''); setWpPreviewOk(null); } }}
+                  />
+                  {wpPreviewOk === true && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-green-400 text-[10px]">✓</span>}
+                  {wpPreviewOk === false && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 text-[10px]">✗</span>}
+                </div>
+                <button
+                  onClick={() => { if (wpUrlInput) { saveWallpaper(wpUrlInput); setWpUrlInput(''); setWpPreviewUrl(''); setWpPreviewOk(null); } }}
+                  className="px-4 py-2 rounded-lg text-[11px] font-bold text-white flex-shrink-0 hover:opacity-85 transition-opacity"
+                  style={{ background: accent }}
+                >Apply</button>
+              </div>
+
+              {/* Live URL preview */}
+              {wpPreviewUrl && (
+                <div className="rounded-xl overflow-hidden mt-2 relative" style={{ aspectRatio: '16/7', border: `1px solid ${border}`, animation: 'wpFadeIn 0.3s ease' }}>
+                  <img
+                    src={wpPreviewUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onLoad={() => setWpPreviewOk(true)}
+                    onError={() => { setWpPreviewOk(false); }}
+                    style={{ display: 'block' }}
+                  />
+                  {wpPreviewOk === false && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1" style={{ background: dk ? 'rgba(10,10,22,0.9)' : 'rgba(245,245,252,0.9)' }}>
+                      <span className="text-xl">⚠️</span>
+                      <p className="text-[10px] opacity-50">Could not load image from URL</p>
+                    </div>
+                  )}
+                  {wpPreviewOk === true && (
+                    <div className="absolute bottom-2 right-2">
+                      <button
+                        onClick={() => { saveWallpaper(wpUrlInput); setWpUrlInput(''); setWpPreviewUrl(''); setWpPreviewOk(null); }}
+                        className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white hover:opacity-85 transition-opacity"
+                        style={{ background: accent, backdropFilter: 'blur(8px)' }}>
+                        Set as Wallpaper ✓
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-              <button
-                onClick={() => saveWallpaper('/wallpapers/default.svg')}
-                className="mt-3 text-[10px] hover:opacity-70 transition-opacity"
-                style={{ color: accent }}
-              >
+
+              <button onClick={() => { saveWallpaper('/wallpapers/default.svg'); setWpUrlInput(''); setWpPreviewUrl(''); setWpPreviewOk(null); }}
+                className="mt-3 text-[10px] hover:opacity-70 transition-opacity" style={{ color: accent }}>
                 ↩ Reset to Default
               </button>
+            </Card>
+
+            {/* ── File Upload ── */}
+            <Card className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider opacity-45 mb-3">Upload from Device</p>
+              <label
+                className="flex flex-col items-center justify-center gap-3 rounded-xl cursor-pointer transition-all"
+                style={{
+                  padding: '20px 16px',
+                  border: `2px dashed ${accent}40`,
+                  background: `${accent}06`,
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLLabelElement).style.background = `${accent}0e`; (e.currentTarget as HTMLLabelElement).style.borderColor = `${accent}70`; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLLabelElement).style.background = `${accent}06`; (e.currentTarget as HTMLLabelElement).style.borderColor = `${accent}40`; }}
+                onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLLabelElement).style.background = `${accent}18`; }}
+                onDragLeave={e => { (e.currentTarget as HTMLLabelElement).style.background = `${accent}06`; }}
+                onDrop={e => {
+                  e.preventDefault();
+                  (e.currentTarget as HTMLLabelElement).style.background = `${accent}06`;
+                  const file = e.dataTransfer.files[0];
+                  if (!file || !file.type.startsWith('image/')) return;
+                  setWpUploading(true);
+                  const reader = new FileReader();
+                  reader.onload = ev => {
+                    const dataUrl = ev.target?.result as string;
+                    saveWallpaper(dataUrl);
+                    setWpUploading(false);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setWpUploading(true);
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                      const dataUrl = ev.target?.result as string;
+                      saveWallpaper(dataUrl);
+                      setWpUploading(false);
+                    };
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
+                  }}
+                />
+                {wpUploading ? (
+                  <>
+                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: `${accent}30`, borderTopColor: accent }} />
+                    <p className="text-[11px] opacity-50">Applying wallpaper…</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: `${accent}18` }}>📁</div>
+                    <div className="text-center">
+                      <p className="text-xs font-semibold" style={{ color: accent }}>Click or drag &amp; drop</p>
+                      <p className="text-[10px] opacity-40 mt-0.5">JPG, PNG, WebP, SVG, GIF supported</p>
+                    </div>
+                  </>
+                )}
+              </label>
+              {theme.wallpaper?.startsWith('data:') && (
+                <div className="flex items-center justify-between mt-3 px-3 py-2 rounded-lg" style={{ background: `${accent}10`, border: `1px solid ${accent}20` }}>
+                  <span className="text-[10px] opacity-60 flex items-center gap-1.5">
+                    <span className="text-green-400">✓</span> Custom image active
+                  </span>
+                  <button onClick={() => saveWallpaper('/wallpapers/default.svg')} className="text-[10px] hover:opacity-70 transition-opacity" style={{ color: accent }}>Remove</button>
+                </div>
+              )}
             </Card>
           </div>
         )}
@@ -709,6 +809,11 @@ export default function Settings() {
             <button
               className="w-full py-2.5 rounded-xl text-[11px] font-semibold text-white transition-opacity hover:opacity-85 flex items-center justify-center gap-2"
               style={{ background: `linear-gradient(135deg, ${accent}, ${accent}cc)` }}
+              onClick={() => {
+                const btn = document.activeElement as HTMLButtonElement;
+                if (btn) btn.textContent = '✓ WebLinuxOS v4.0 is up to date';
+                setTimeout(() => { if (btn) btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>Check for Updates'; }, 2800);
+              }}
             >
               <RefreshCw size={13} /> Check for Updates
             </button>
@@ -718,198 +823,161 @@ export default function Settings() {
         {/* ═══════════════ PIONEERED BY ═══════════════ */}
         {section === 'pioneer' && (
           <div className="relative overflow-hidden" style={{ minHeight: '100%' }}>
+            <style>{`
+              @keyframes pioneerBgPulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+              @keyframes pioneerAvatarPulse { 0%,100%{box-shadow:0 0 0 3px ${accent}30,0 0 0 6px ${accent}15,0 0 32px ${accent}40} 50%{box-shadow:0 0 0 4px ${accent}45,0 0 0 9px ${accent}20,0 0 48px ${accent}55} }
+              @keyframes pioneerOrbitDot { 0%{transform:rotate(0deg) translateX(38px) rotate(0deg)} 100%{transform:rotate(360deg) translateX(38px) rotate(-360deg)} }
+              @keyframes decryptChar { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+              @keyframes unlockPulse { 0%,100%{box-shadow:0 0 0 0 ${accent}40} 50%{box-shadow:0 0 0 8px ${accent}00} }
+              @keyframes scanLine { 0%{top:-20%} 100%{top:120%} }
+            `}</style>
             {/* Animated BG */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: dk
-                  ? `radial-gradient(ellipse at 25% 40%, ${accent}1a 0%, transparent 55%), radial-gradient(ellipse at 75% 20%, ${accent}12 0%, transparent 55%)`
-                  : `radial-gradient(ellipse at 25% 40%, ${accent}14 0%, transparent 55%), radial-gradient(ellipse at 75% 20%, ${accent}0e 0%, transparent 55%)`,
-                animation: 'pioneerBgPulse 8s ease-in-out infinite',
-              }}
-            />
-            {/* Grid lines */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `linear-gradient(${dk ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)'} 1px, transparent 1px), linear-gradient(90deg, ${dk ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.025)'} 1px, transparent 1px)`,
-                backgroundSize: '40px 40px',
-              }}
-            />
+            <div className="absolute inset-0 pointer-events-none" style={{
+              background: dk
+                ? `radial-gradient(ellipse at 25% 40%, ${accent}18 0%, transparent 55%), radial-gradient(ellipse at 75% 20%, ${accent}10 0%, transparent 55%)`
+                : `radial-gradient(ellipse at 25% 40%, ${accent}12 0%, transparent 55%)`,
+              animation: 'pioneerBgPulse 8s ease-in-out infinite',
+            }} />
+            {/* Subtle grid */}
+            <div className="absolute inset-0 pointer-events-none" style={{
+              backgroundImage: `linear-gradient(${dk ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 1px, transparent 1px), linear-gradient(90deg, ${dk ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'} 1px, transparent 1px)`,
+              backgroundSize: '40px 40px',
+            }} />
 
-            <div className="relative z-10 p-6 flex flex-col" style={{ minHeight: 540 }}>
-
-              {/* Top label */}
-              <div className="text-center mb-6">
-                <p className="text-[10px] font-bold uppercase tracking-[0.4em] opacity-30 mb-5">
-                  PIONEERED BY
-                </p>
-
-                {/* Animated avatar ring */}
-                <div className="flex justify-center mb-5">
+            <div className="relative z-10 p-6 flex flex-col gap-5">
+              {/* Header */}
+              <div className="text-center">
+                <p className="text-[9px] font-bold uppercase tracking-[0.5em] opacity-25 mb-4">PIONEERED BY</p>
+                <div className="flex justify-center mb-4">
                   <div className="relative">
-                    <div
-                      className="w-20 h-20 rounded-full flex items-center justify-center text-white font-black text-2xl"
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center text-white font-black text-2xl select-none"
                       style={{
-                        background: `linear-gradient(135deg, ${accent}, ${accent}88)`,
-                        boxShadow: `0 0 0 3px ${accent}30, 0 0 0 6px ${accent}15, 0 0 32px ${accent}40`,
+                        background: `linear-gradient(135deg, ${accent}, ${accent}77)`,
                         animation: 'pioneerAvatarPulse 3s ease-in-out infinite',
-                      }}
-                    >
+                      }}>
                       SM
                     </div>
-                    {/* Orbit dot */}
-                    <div
-                      className="absolute w-3 h-3 rounded-full"
-                      style={{
-                        background: accent,
-                        top: -4, right: -4,
-                        boxShadow: `0 0 8px ${accent}80`,
-                        animation: 'pioneerOrbitDot 3s linear infinite',
-                      }}
-                    />
+                    <div className="absolute w-3 h-3 rounded-full" style={{
+                      background: accent, boxShadow: `0 0 10px ${accent}`,
+                      top: '50%', left: '50%', marginTop: -6, marginLeft: -6,
+                      animation: 'pioneerOrbitDot 3s linear infinite',
+                      transformOrigin: '6px 6px',
+                    }} />
                   </div>
                 </div>
-
-                {/* Name reveal */}
                 <PioneerName accent={accent} />
-
-                <p className="text-[10px] mt-3 tracking-[0.3em] uppercase" style={{ color: dk ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.38)' }}>
+                <p className="text-[10px] mt-2 tracking-[0.25em] uppercase" style={{ color: dk ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.35)' }}>
                   Full-Stack Engineer · Builder · AI Enthusiast
                 </p>
-                <p className="text-[10px] mt-1.5 opacity-30">
-                  📍 Chennai, India
-                </p>
+                <p className="text-[10px] mt-1 opacity-25">📍 Chennai, India</p>
               </div>
 
               {/* Quote */}
-              <div
-                className="rounded-r-xl mb-5"
-                style={{
-                  padding: '10px 14px',
-                  borderLeft: `3px solid ${accent}`,
-                  background: `${accent}0a`,
-                  fontStyle: 'italic',
-                  fontSize: 11,
-                  lineHeight: 1.65,
-                  opacity: 0.75,
-                }}
-              >
+              <div style={{
+                padding: '10px 14px', borderLeft: `3px solid ${accent}`,
+                background: `${accent}08`, fontStyle: 'italic',
+                fontSize: 11, lineHeight: 1.65, opacity: 0.7, borderRadius: '0 8px 8px 0',
+              }}>
                 "Crafting digital experiences that blur the line between web&nbsp;&&nbsp;operating system — one pixel at a time."
               </div>
 
-              {/* Link cards */}
-              <div className="grid grid-cols-2 gap-3 mb-5">
-                {/* Portfolio */}
-                <a
-                  href="https://shaik-muzzammil-portfolio.vercel.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-xl p-4 transition-all group/portfolio"
-                  style={{
-                    background: dk ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-                    border: `1px solid ${accent}28`,
-                    textDecoration: 'none',
-                    color: 'inherit',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.background = `${accent}14`;
-                    el.style.transform = 'translateY(-2px)';
-                    el.style.boxShadow = `0 8px 24px ${accent}20`;
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.background = dk ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
-                    el.style.transform = 'translateY(0)';
-                    el.style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>🌐</div>
-                  <p className="text-xs font-bold mb-0.5">Portfolio</p>
-                  <p className="text-[10px] mb-3" style={{ color: dk ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)' }}>
-                    shaik-muzzammil-portfolio
-                  </p>
-                  <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: accent }}>
-                    Visit <ExternalLink size={9} />
-                  </div>
-                </a>
+              {/* ── LOCKED LINK CARDS ──────────────────────────────── */}
+              <div className="relative">
+                {/* Cards (blurred when locked) */}
+                <div className="grid grid-cols-2 gap-3" style={{
+                  filter: linksUnlocked ? 'none' : 'blur(7px)',
+                  pointerEvents: linksUnlocked ? 'auto' : 'none',
+                  transition: 'filter 0.5s ease',
+                  userSelect: linksUnlocked ? 'auto' : 'none',
+                }}>
+                  {/* Portfolio card */}
+                  <a href="https://shaik-muzzammil-portfolio.vercel.app/" target="_blank" rel="noopener noreferrer"
+                    className="block rounded-xl p-4 transition-all"
+                    style={{ background: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: `1px solid ${accent}30`, textDecoration: 'none', color: 'inherit' }}
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = `${accent}15`; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = `0 8px 20px ${accent}20`; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
+                  >
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>🌐</div>
+                    <p className="text-xs font-bold mb-0.5">Portfolio</p>
+                    <p className="text-[10px] mb-3 font-mono" style={{ color: dk ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.35)' }}>shaik-muzzammil-portfolio</p>
+                    <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: accent }}>Visit <ExternalLink size={9} /></div>
+                  </a>
+                  {/* Linktree card */}
+                  <a href="https://linktr.ee/Shaik_Muzzammil" target="_blank" rel="noopener noreferrer"
+                    className="block rounded-xl p-4 transition-all"
+                    style={{ background: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', border: '1px solid rgba(57,211,83,0.28)', textDecoration: 'none', color: 'inherit' }}
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(57,211,83,0.10)'; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 20px rgba(57,211,83,0.15)'; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'; el.style.transform = 'none'; el.style.boxShadow = 'none'; }}
+                  >
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>🌿</div>
+                    <p className="text-xs font-bold mb-0.5">Linktree</p>
+                    <p className="text-[10px] mb-3 font-mono" style={{ color: dk ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.35)' }}>@Shaik_Muzzammil</p>
+                    <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: '#39d353' }}>Connect <ExternalLink size={9} /></div>
+                  </a>
+                </div>
 
-                {/* Linktree */}
-                <a
-                  href="https://linktr.ee/Shaik_Muzzammil"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-xl p-4 transition-all"
-                  style={{
-                    background: dk ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-                    border: '1px solid rgba(57,211,83,0.25)',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.background = 'rgba(57,211,83,0.10)';
-                    el.style.transform = 'translateY(-2px)';
-                    el.style.boxShadow = '0 8px 24px rgba(57,211,83,0.15)';
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.background = dk ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
-                    el.style.transform = 'translateY(0)';
-                    el.style.boxShadow = 'none';
-                  }}
-                >
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>🌿</div>
-                  <p className="text-xs font-bold mb-0.5">Linktree</p>
-                  <p className="text-[10px] mb-3" style={{ color: dk ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)' }}>
-                    @Shaik_Muzzammil
-                  </p>
-                  <div className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: '#39d353' }}>
-                    Connect <ExternalLink size={9} />
+                {/* Lock overlay — visible when locked */}
+                {!linksUnlocked && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl"
+                    style={{ background: dk ? 'rgba(10,10,22,0.60)' : 'rgba(240,240,252,0.60)', backdropFilter: 'blur(2px)' }}>
+                    <div className="text-2xl select-none">🔐</div>
+                    <p className="text-[11px] font-semibold opacity-60">Links are encrypted</p>
+                    <button
+                      onClick={() => {
+                        setUnlocking(true);
+                        setTimeout(() => { setLinksUnlocked(true); setUnlocking(false); }, 1400);
+                      }}
+                      disabled={unlocking}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-60"
+                      style={{
+                        background: `linear-gradient(135deg, ${accent}, ${accent}cc)`,
+                        boxShadow: `0 4px 14px ${accent}40`,
+                        animation: unlocking ? 'none' : 'unlockPulse 2s infinite',
+                      }}
+                    >
+                      {unlocking ? (
+                        <>
+                          <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          Decrypting…
+                        </>
+                      ) : (
+                        <> 🔓 Unlock Profile</>
+                      )}
+                    </button>
+                    {unlocking && (
+                      <p className="text-[9px] font-mono opacity-40 animate-pulse">$ sudo reveal --profile nova</p>
+                    )}
                   </div>
-                </a>
+                )}
+
+                {/* Re-lock button when unlocked */}
+                {linksUnlocked && (
+                  <button
+                    onClick={() => setLinksUnlocked(false)}
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-[9px] transition-opacity hover:opacity-80"
+                    style={{ background: dk ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', color: dk ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)' }}
+                    title="Lock again"
+                  >
+                    🔒
+                  </button>
+                )}
               </div>
 
-              {/* Stats */}
-              <div
-                className="rounded-xl mb-4 grid grid-cols-3 gap-px overflow-hidden"
-                style={{ border: `1px solid ${border}` }}
-              >
-                {[
-                  { value: '54+', label: 'Built-in Apps' },
-                  { value: 'v4.0', label: 'Version' },
-                  { value: '1', label: 'Developer' },
-                ].map(({ value, label }, i) => (
-                  <div
-                    key={label}
-                    className="py-3 text-center"
-                    style={{
-                      background: dk ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                      borderRight: i < 2 ? `1px solid ${border}` : 'none',
-                    }}
-                  >
-                    <div className="text-lg font-black" style={{ color: accent }}>{value}</div>
-                    <div className="text-[9px] opacity-35 uppercase tracking-wider mt-0.5">{label}</div>
+              {/* Stats bar */}
+              <div className="grid grid-cols-3 rounded-xl overflow-hidden" style={{ border: `1px solid ${border}` }}>
+                {[['54+','Built-in Apps'],['v4.0','Version'],['1','Developer']].map(([val, lbl], i) => (
+                  <div key={lbl} className="py-3 text-center" style={{
+                    background: dk ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                    borderRight: i < 2 ? `1px solid ${border}` : 'none',
+                  }}>
+                    <div className="text-lg font-black" style={{ color: accent }}>{val}</div>
+                    <div className="text-[9px] opacity-30 uppercase tracking-wider mt-0.5">{lbl}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Email (optional contact) */}
-              <div
-                className="flex items-center justify-between rounded-xl px-4 py-3 mb-4 cursor-pointer transition-all hover:opacity-80"
-                style={{ background: `${accent}10`, border: `1px solid ${accent}20` }}
-                onClick={copyEmail}
-                title="Click to copy"
-              >
-                <span className="text-[11px] opacity-60">muzzammil160806@gmail.com</span>
-                <span className="text-[10px] font-semibold" style={{ color: accent }}>
-                  {copyTip || 'Copy ↗'}
-                </span>
-              </div>
-
-              {/* Footer */}
-              <div className="mt-auto text-center text-[9px] opacity-20 leading-relaxed">
+              {/* Footer — no email */}
+              <div className="text-center text-[9px] opacity-20 leading-relaxed">
                 WebLinuxOS · Built entirely from scratch<br />
                 Next.js · TypeScript · Tailwind CSS · Neon · Vercel
               </div>

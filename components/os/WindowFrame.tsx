@@ -181,32 +181,37 @@ export default memo(function WindowFrame({ window: win, children }: Props) {
           <span className="text-xs font-medium truncate" style={{ color: titleText }}>{win.title}</span>
         </div>
 
-        {/* Right controls */}
-        <div
-          className="w-14 flex-shrink-0 flex items-center justify-end gap-0.5"
-          style={{ opacity: 0, transition: 'opacity 0.15s' }}
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '0'}
-        >
+        {/* Right controls — always visible, no hover-hide */}
+        <div className="w-16 flex-shrink-0 flex items-center justify-end gap-0.5">
           <button
             onClick={e => { e.stopPropagation(); minimizeWindow(win.id); }}
-            className="p-0.5 rounded transition-colors"
-            style={{ color: titleText }}
-            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(128,128,128,0.2)'}
-            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
+            className="p-1 rounded-md transition-all flex items-center justify-center"
+            style={{ color: titleText, opacity: 0.55 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(128,128,128,0.18)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
             title="Minimize"
           >
-            <Icons.Minus size={10} />
+            <Icons.Minus size={11} />
           </button>
           <button
             onClick={e => { e.stopPropagation(); isMax ? restoreWindow(win.id) : maximizeWindow(win.id); }}
-            className="p-0.5 rounded transition-colors"
-            style={{ color: titleText }}
-            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(128,128,128,0.2)'}
-            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
+            className="p-1 rounded-md transition-all flex items-center justify-center"
+            style={{ color: titleText, opacity: 0.55 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(128,128,128,0.18)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
             title={isMax ? 'Restore' : 'Maximize'}
           >
-            {isMax ? <Icons.Minimize2 size={10} /> : <Icons.Maximize2 size={10} />}
+            {isMax ? <Icons.Minimize2 size={11} /> : <Icons.Maximize2 size={11} />}
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); closeWindow(win.id); }}
+            className="p-1 rounded-md transition-all flex items-center justify-center"
+            style={{ color: titleText, opacity: 0.55 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.25)'; (e.currentTarget as HTMLButtonElement).style.color = '#ef4444'; (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = titleText; (e.currentTarget as HTMLButtonElement).style.opacity = '0.55'; }}
+            title="Close"
+          >
+            <Icons.X size={11} />
           </button>
         </div>
       </div>
